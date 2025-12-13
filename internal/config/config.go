@@ -35,6 +35,18 @@ type Config struct {
 
 	// DisablePublicIP disables public IP address gathering from external services
 	DisablePublicIP bool `yaml:"disable_public_ip"`
+
+	// HistoricalLookbackDays specifies how many days back to look for historical installations
+	HistoricalLookbackDays int `yaml:"historical_lookback_days"`
+
+	// IncludeHistorical enables historical package tracking from logs
+	IncludeHistorical bool `yaml:"include_historical"`
+
+	// IncludeRawLogs includes raw log files in the zip archive
+	IncludeRawLogs bool `yaml:"include_raw_logs"`
+
+	// CreateZipArchive creates a zip file with SBOMs and logs
+	CreateZipArchive bool `yaml:"create_zip_archive"`
 }
 
 // DefaultConfig returns a Config with default values including sensitive path exclusions
@@ -67,11 +79,16 @@ func DefaultConfig() *Config {
 			"edge-extensions",
 			"safari-extensions",
 		},
-		RequireAdmin:     false, // Don't require admin - auto-adjust based on privileges
-		ScanAllUsers:     true,  // Default to true, will auto-adjust if not admin
-		OutputDir:        "", // Will be set to scans/ by main
-		Debug:            false,
-		Verbose:          false,
+		RequireAdmin:           false, // Don't require admin - auto-adjust based on privileges
+		ScanAllUsers:           true,  // Default to true, will auto-adjust if not admin
+		OutputDir:              "",    // Will be set to scans/ by main
+		Debug:                  false,
+		Verbose:                false,
+		DisablePublicIP:        false,
+		HistoricalLookbackDays: 30,
+		IncludeHistorical:      true,
+		IncludeRawLogs:         true,
+		CreateZipArchive:       true,
 	}
 }
 

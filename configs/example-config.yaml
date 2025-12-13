@@ -66,6 +66,28 @@ verbose: false
 # This avoids making external network requests to untrusted services
 disable_public_ip: false
 
+# === Historical Tracking Options ===
+
+# Days to look back for historical package installations (default: 30)
+# Scans logs and package metadata to find packages installed in the last N days
+# Useful for incident response to see what was installed even if later removed
+historical_lookback_days: 30
+
+# Enable historical package tracking from logs (default: true)
+# When enabled, scans npm logs, brew history, etc. for recent installations
+# Provides "point-in-time" visibility beyond just currently installed packages
+include_historical: true
+
+# Include raw log files in zip archive (default: true)
+# When enabled, relevant log files (npm logs, etc.) are included in the zip
+# Useful for forensic analysis during incident response
+include_raw_logs: true
+
+# Create zip archive with SBOMs and logs (default: true)
+# When enabled, creates a .scan.zip file with all SBOMs and log files
+# SBOMs are also kept unzipped in the scans/ directory for easy viewing
+create_zip_archive: true
+
 # Security Notes:
 # - Config and output paths are validated for security
 # - Sensitive files (.ssh, .aws, credentials) are automatically excluded

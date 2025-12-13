@@ -32,11 +32,20 @@ vendor/
 # Security Reports and Development Notes (should not be committed to public repos)
 CURSOR_OWASP_CHECK.md
 PROJECT_SUMMARY.md
+IMPLEMENTATION_SUMMARY.md
 .gitignore_summary.md
+
+# Distribution/Publishing Documentation (internal only)
+HOMEBREW_PUBLISHING.md
+DeploymentDocs/HOMEBREW_PUBLISHING.md
+DeploymentDocs/GITHUB_RELEASE_PROCESS.md
+DeploymentDocs/CONVENTIONAL_COMMITS.md
+DeploymentDocs/RELEASE_NOTES_TEMPLATE.md
 
 # Scan output directories (contain endpoint-specific data)
 scans/
 bin/scans/
+*.scan.zip
 
 # Local configuration files (may contain environment-specific settings)
 endpointbom.yaml

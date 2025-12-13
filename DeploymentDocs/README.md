@@ -4,13 +4,21 @@ This folder contains deployment-specific documentation for enterprise environmen
 
 ## 📁 Documents
 
+### Getting Started
+- **[SCHEDULING.md](SCHEDULING.md)** - **START HERE** - How to schedule daily scans on macOS, Windows, and Linux
+- **[JAMF_DEPLOYMENT.md](JAMF_DEPLOYMENT.md)** - Jamf Pro deployment guide (macOS enterprise)
+
+### Internal Release Management (Not Published)
+- **[GITHUB_RELEASE_PROCESS.md](GITHUB_RELEASE_PROCESS.md)** - How to create and publish GitHub releases
+- **[CONVENTIONAL_COMMITS.md](CONVENTIONAL_COMMITS.md)** - Commit message guidelines for automated versioning
+- **[RELEASE_NOTES_TEMPLATE.md](RELEASE_NOTES_TEMPLATE.md)** - Template for release notes
+
 ### Quick Reference
 - **[TCC_QUICK_REFERENCE.md](TCC_QUICK_REFERENCE.md)** - Quick reference card for macOS TCC permissions
 - **[BROWSER_SCANNERS_DEFAULT_DISABLED.md](BROWSER_SCANNERS_DEFAULT_DISABLED.md)** - Why browser scanners are disabled by default
 
 ### macOS Deployment
 - **[MACOS_TCC_PERMISSIONS.md](MACOS_TCC_PERMISSIONS.md)** - Complete guide to macOS TCC permissions
-- **[JAMF_DEPLOYMENT.md](JAMF_DEPLOYMENT.md)** - Jamf Pro deployment instructions with Configuration Profiles
 
 ### Browser Extensions
 - **[ENABLING_BROWSER_SCANNING.md](ENABLING_BROWSER_SCANNING.md)** - How to enable browser extension scanning
@@ -18,41 +26,53 @@ This folder contains deployment-specific documentation for enterprise environmen
 
 ## 🎯 Common Scenarios
 
-### Scenario 1: Basic Jamf Deployment (No Browser Scanning)
+### Scenario 1: Basic Deployment with Daily Scans
 
-**Goal:** Deploy tool to scan packages, applications, IDE extensions (no browser data)
+**Goal:** Deploy tool to scan packages, applications, IDE extensions daily
 
 **Steps:**
 1. Download binary from GitHub releases
-2. Deploy via Jamf to `/usr/local/bin/endpointbom`
-3. Create Jamf policy to run daily
-4. Done! No TCC permissions needed.
+2. Install to system path (`/usr/local/bin/` or `C:\Program Files\`)
+3. Set up daily schedule (see [SCHEDULING.md](SCHEDULING.md))
+4. Done! No TCC permissions needed (unless enabling browser scanning)
 
-**Result:** Works immediately, no popups ✅
+**Result:** Works immediately, automated daily scans ✅
 
-### Scenario 2: Full Deployment with Browser Scanning
+### Scenario 2: Enterprise Jamf Deployment (macOS)
+
+**Goal:** Deploy to all macOS endpoints via Jamf with daily scans
+
+**Steps:**
+1. Create package with binary
+2. Deploy via Jamf policy
+3. Deploy LaunchDaemon for daily execution (see [JAMF_DEPLOYMENT.md](JAMF_DEPLOYMENT.md))
+4. Optional: Deploy TCC profile for browser scanning
+
+**Result:** Automated enterprise-wide scanning ✅
+
+### Scenario 3: Full Deployment with Browser Scanning
 
 **Goal:** Get complete security visibility including browser extensions
 
 **Steps:**
-1. Deploy TCC Configuration Profile via Jamf (see [JAMF_DEPLOYMENT.md](JAMF_DEPLOYMENT.md))
-2. Deploy binary to `/usr/local/bin/endpointbom`
-3. Deploy config file with browsers enabled (see [ENABLING_BROWSER_SCANNING.md](ENABLING_BROWSER_SCANNING.md))
-4. Create Jamf policy to run daily
+1. Deploy binary
+2. Set up daily schedule (see [SCHEDULING.md](SCHEDULING.md))
+3. **macOS**: Deploy TCC Configuration Profile (see [JAMF_DEPLOYMENT.md](JAMF_DEPLOYMENT.md))
+4. Deploy config file with browsers enabled (see [ENABLING_BROWSER_SCANNING.md](ENABLING_BROWSER_SCANNING.md))
 
 **Result:** Full data including browser extensions, no popups ✅
 
-### Scenario 3: Windows Deployment
+### Scenario 4: Windows Deployment
 
-**Goal:** Deploy to Windows endpoints via GPO or Intune
+**Goal:** Deploy to Windows endpoints with daily scans
 
 **Steps:**
 1. Download Windows binary from GitHub releases
 2. Deploy to `C:\Program Files\EndpointBOM\endpointbom.exe`
-3. Create scheduled task to run daily as SYSTEM
+3. Create scheduled task (see [SCHEDULING.md](SCHEDULING.md#windows))
 4. Optional: Enable browser scanning (no TCC issues on Windows)
 
-**Result:** Works immediately ✅
+**Result:** Works immediately with automated daily scans ✅
 
 ## 🔧 Configuration
 

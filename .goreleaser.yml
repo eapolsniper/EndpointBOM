@@ -1,0 +1,181 @@
+# GoReleaser configuration for EndpointBOM
+# https://goreleaser.com
+
+version: 1
+
+before:
+  hooks:
+    # Ensure dependencies are up to date
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: endpointbom
+    binary: endpointbom
+    main: ./cmd/endpointbom
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Ignore arm64 on Windows (not commonly used)
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/eapolsniper/endpointbom/internal/version.Version={{.Version}}
+      - -X github.com/eapolsniper/endpointbom/internal/version.Commit={{.Commit}}
+      - -X github.com/eapolsniper/endpointbom/internal/version.Date={{.Date}}
+      - -X github.com/eapolsniper/endpointbom/internal/version.BuiltBy=goreleaser
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - configs/example-config.yaml
+      - docs/**/*
+      - DeploymentDocs/**/*
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^test:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: '✨ New Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: '🐛 Bug Fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: '🔒 Security Updates'
+      regexp: "^.*security[(\\w)]*:+.*$"
+      order: 2
+    - title: '📚 Documentation'
+      regexp: "^.*docs[(\\w)]*:+.*$"
+      order: 3
+    - title: '🔧 Maintenance'
+      regexp: "^.*(chore|deps|build)[(\\w)]*:+.*$"
+      order: 4
+    - title: '🔀 Other Changes'
+      order: 999
+
+release:
+  github:
+    owner: eapolsniper
+    name: endpointbom
+  
+  # Release name template
+  name_template: "v{{.Version}}"
+  
+  # Prerelease detection
+  prerelease: auto
+  
+  # Draft release (set to false for automatic publishing)
+  draft: false
+  
+  # Discussion category for release
+  discussion_category_name: Releases
+  
+  # Header and footer for release notes
+  header: |
+    ## EndpointBOM v{{ .Version }}
+    
+    **Full Changelog**: https://github.com/eapolsniper/endpointbom/compare/{{ .PreviousTag }}...{{ .Tag }}
+    
+    ### Installation
+    
+    #### Quick Install (macOS/Linux)
+    ```bash
+    # Download and install
+    curl -sL https://github.com/eapolsniper/endpointbom/releases/download/{{ .Tag }}/endpointbom_{{ .Version }}_$(uname -s)_$(uname -m).tar.gz | tar xz
+    sudo mv endpointbom /usr/local/bin/
+    ```
+    
+    #### Homebrew (macOS)
+    ```bash
+    brew install eapolsniper/tap/endpointbom
+    ```
+    
+    #### Windows
+    Download the appropriate `.zip` file below and extract `endpointbom.exe` to your PATH.
+    
+    ### Usage
+    ```bash
+    # Run scan (admin/root recommended)
+    sudo endpointbom
+    
+    # View help
+    endpointbom --help
+    ```
+    
+    ---
+  
+  footer: |
+    ---
+    
+    ### Verification
+    
+    All binaries include SHA256 checksums for verification:
+    ```bash
+    # Download checksums
+    curl -sLO https://github.com/eapolsniper/endpointbom/releases/download/{{ .Tag }}/checksums.txt
+    
+    # Verify (macOS/Linux)
+    shasum -a 256 -c checksums.txt 2>&1 | grep OK
+    
+    # Verify (Windows)
+    certutil -hashfile endpointbom.exe SHA256
+    ```
+    
+    ### Support
+    - 📖 Documentation: https://github.com/eapolsniper/endpointbom
+    - 🐛 Report Issues: https://github.com/eapolsniper/endpointbom/issues
+    - 💬 Discussions: https://github.com/eapolsniper/endpointbom/discussions
+    
+    **Author**: Tim Jensen ([@eapolsniper](https://github.com/eapolsniper))
+
+# Homebrew tap (optional - requires separate tap repository)
+brews:
+  - name: endpointbom
+    repository:
+      owner: eapolsniper
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    folder: Formula
+    homepage: https://github.com/eapolsniper/endpointbom
+    description: "CLI tool for scanning developer endpoints to capture Bill of Materials (BOM) data"
+    license: MIT
+    skip_upload: auto
+    test: |
+      system "#{bin}/endpointbom", "--version"
+    install: |
+      bin.install "endpointbom"
+      (etc/"endpointbom").install "configs/example-config.yaml" => "config.yaml"
+
+# Metadata
+metadata:
+  mod_timestamp: '{{ .CommitTimestamp }}'
+

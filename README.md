@@ -44,16 +44,6 @@
   - Cursor MCP configurations
   - Captures command, args count, and env var count (without exposing secrets)
 
-### Security First
-
-- ✅ **No secrets collected**: API keys, tokens, and environment variable values are never captured
-- ✅ **Minimal dependencies**: Only 3 external dependencies, all highly trusted
-- ✅ **Dependency pinning**: All dependencies pinned to known safe versions
-- ✅ **Standard library preferred**: Uses Go standard library whenever possible
-- ✅ **No telemetry**: No data is sent anywhere by the tool
-- ✅ **Path validation**: Prevents reading sensitive files (passwords, SSH keys, credentials)
-- ✅ **Write protection**: Blocks writing to system directories and sensitive locations
-- ✅ **Safe defaults**: Excludes sensitive paths by default (.ssh, .aws, .gnupg, etc.)
 
 ### Output Format
 
@@ -62,7 +52,7 @@
   - `{hostname}.{timestamp}.package-managers.cdx.json`
   - `{hostname}.{timestamp}.applications.cdx.json`
   - `{hostname}.{timestamp}.ide-extensions.cdx.json`
-  - `{hostname}.{timestamp}.browser-extensions.cdx.json` (NEW!)
+  - `{hostname}.{timestamp}.browser-extensions.cdx.json` 
 - Includes metadata: hostname, OS version, logged-in users, local IPs, public IP, timestamp
 
 ## Installation
@@ -104,7 +94,7 @@ Builds binaries for:
 
 ### Basic Usage
 
-**Recommended:** Run with admin/root privileges for complete endpoint inventory:
+It's recommended to run with admin/root privileges for complete endpoint inventory, but if the system is used only by one person, the inventory should be nearly complete and "good enough" for the purpose of this tool.
 
 ```bash
 # macOS/Linux
@@ -246,47 +236,14 @@ Once published, the tool can be installed via Homebrew:
 brew install endpointbom
 ```
 
-*(This requires creating a Homebrew tap - instructions below)*
+### Enterprise Deployment
 
-### Jamf Pro (Enterprise Deployment)
+For enterprise deployment and automated scheduling, see **[DeploymentDocs](DeploymentDocs/)**:
 
-1. **Build the binary** for macOS:
-   ```bash
-   make build-all
-   ```
+- **[SCHEDULING.md](DeploymentDocs/SCHEDULING.md)** - Set up daily automated scans (macOS, Windows, Linux)
+- **[JAMF_DEPLOYMENT.md](DeploymentDocs/JAMF_DEPLOYMENT.md)** - Jamf Pro deployment guide
+- **[MACOS_TCC_PERMISSIONS.md](DeploymentDocs/MACOS_TCC_PERMISSIONS.md)** - macOS permissions for browser scanning
 
-2. **Create a package** using a tool like `pkgbuild` or Jamf Composer
-
-3. **Upload to Jamf Pro**:
-   - Create a new policy
-   - Upload the package
-   - Set execution frequency (e.g., daily)
-   - Configure script to run: `endpointbom --output=/var/log/endpointbom`
-
-4. **Collect results**: Configure the tool to upload SBOMs to a central location (future feature)
-
-### Windows Group Policy / SCCM
-
-Similar deployment pattern for Windows environments using Group Policy or SCCM to distribute and run the tool.
-
-## Dependencies
-
-EndpointBOM uses only 3 external dependencies, all highly trusted:
-
-1. **github.com/CycloneDX/cyclonedx-go** (v0.8.0)
-   - Official CycloneDX library
-   - Maintained by OWASP CycloneDX team
-   - 50+ contributors
-
-2. **github.com/spf13/cobra** (v1.8.0)
-   - Industry-standard CLI framework
-   - 35k+ stars on GitHub
-   - Maintained by Google employees + community
-
-3. **gopkg.in/yaml.v3** (v3.0.1)
-   - Standard YAML parser for Go
-   - Part of go-yaml organization
-   - Widely used in Go ecosystem
 
 All dependencies are pinned to specific versions in `go.mod`.
 
@@ -304,16 +261,11 @@ All dependencies are pinned to specific versions in `go.mod`.
 | composer       | ✅        | ❌                      | Global packages only |
 | chocolatey     | ✅        | ❌                      | Windows only |
 | go             | ✅        | ✅                      | Module dependencies |
-| poetry         | ⚠️        | ❌                      | Not yet implemented |
-| pipenv         | ⚠️        | ❌                      | Not yet implemented |
-| conda          | ⚠️        | ❌                      | Not yet implemented |
-| maven          | ⚠️        | ❌                      | Not yet implemented |
-| gradle         | ⚠️        | ❌                      | Not yet implemented |
-| nuget          | ⚠️        | ❌                      | Not yet implemented |
+
 
 **Legend**:
 - ✅ Fully supported
-- ⚠️ Planned/partially supported
+- ⚠️ Partially supported
 - ❌ Not applicable or not supported
 
 ## Known Limitations
@@ -328,9 +280,8 @@ All dependencies are pinned to specific versions in `go.mod`.
    - nuget (.NET)
    - bun (JavaScript)
    
-   These will be added in future versions based on community feedback.
 
-2. **Project-Level Dependencies**: The tool scans globally installed packages, not project-specific `package.json`, `requirements.txt`, etc.
+2. **Project-Level Dependencies**: The tool scans globally installed packages, not project-specific installer files that haven't been installed `package.json`, `requirements.txt`, etc.
 
 3. **Transitive Dependencies**: Not all package managers support querying transitive dependencies. Where possible (npm, pnpm, yarn, go), we capture them.
 
@@ -340,21 +291,8 @@ All dependencies are pinned to specific versions in `go.mod`.
 
 ## Roadmap
 
-### Version 1.1
-- [ ] Add support for poetry, pipenv, conda
-- [ ] Add support for maven, gradle, nuget
-- [ ] Enhanced Windows Registry parsing for accurate version information
-- [ ] Add Atom IDE scanner
-
-### Version 1.2
 - [ ] Upload SBOM files to remote endpoints (S3, HTTP, etc.)
-- [ ] Integration with vulnerability databases
-- [ ] Docker image for containerized scanning
 
-### Version 2.0
-- [ ] Web UI for viewing SBOMs
-- [ ] Historical tracking and diff reports
-- [ ] Compliance reporting
 
 ## Contributing
 
@@ -366,9 +304,23 @@ Contributions are welcome! Please:
 4. Add tests if applicable
 5. Submit a pull request
 
+Please follow standard Go coding conventions and ensure all tests pass before submitting.
+
 ## Security
 
-If you discover a security vulnerability, please email security@example.com instead of using the issue tracker.
+If you discover a security vulnerability, please use the Security reporting tab in GitHub instead of using the issue tracker.
+
+### Automated Dependency Management
+
+This project uses **Dependabot** with automated testing and a **14-day cooldown policy** for dependency updates:
+
+- ✅ **Critical/High Severity** - Security fixes merge automatically after tests pass
+- ⏱️ **Medium/Low/Non-Security** - 14-day cooldown for community vetting before auto-merge
+- 🧪 **All Updates** - Comprehensive test suite (Linux, macOS, Windows) required
+- 🔒 **Vulnerability Scanning** - `govulncheck` runs on every dependency update
+- 📋 **License Review** - Blocks incompatible licenses (GPL-3.0, AGPL-3.0)
+
+For more details on the automation workflows, see [`.github/README.md`](.github/README.md).
 
 ## License
 

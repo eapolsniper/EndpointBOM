@@ -1,5 +1,56 @@
 # EndpointBOM Changelog
 
+## [1.2.0] - 2025-12-13
+
+### Added - Automated Release Management
+- **Automated Versioning** - Uses conventional commits for semantic versioning
+- **Automatic Releases** - Builds and publishes releases on every merge to main
+- **Multi-Platform Builds** - Generates binaries for macOS (Intel + Apple Silicon), Windows, Linux
+- **GoReleaser Integration** - Professional release artifacts with checksums
+- **Version Command** - `--version` flag shows build info (version, commit, date)
+
+### Added - Automated Dependency Management
+- **Dependabot Configuration** - Automated dependency updates with security focus
+- **14-Day Cooldown Policy** - Non-critical updates wait 14 days for community vetting
+- **Auto-Merge Workflow** - Critical/high severity fixes merge automatically
+- **Dependency Testing** - Comprehensive test suite runs on all dependency updates
+
+### Security - Dependency Update Policy
+- ✅ **Critical/High Severity** - Immediate auto-merge after tests pass
+- ⏱️ **Medium/Low/Non-Security** - 14-day cooldown before auto-merge
+- 🧪 **All Updates** - Full test suite (Linux, macOS, Windows) must pass
+- 🔒 **Vulnerability Scanning** - `govulncheck` runs on every update
+- 📋 **License Review** - Blocks GPL-3.0 and AGPL-3.0 licenses
+
+### Release Process - Conventional Commits
+Version bumps are determined automatically from commit messages:
+- **MAJOR** (x.0.0): Breaking changes (`feat!:` or `BREAKING CHANGE:`)
+- **MINOR** (0.x.0): New features (`feat:`)
+- **PATCH** (0.0.x): Bug fixes, security, dependencies (`fix:`, `security:`, `deps:`)
+
+### Files Added
+**Dependency Management:**
+- `.github/dependabot.yml` - Dependabot configuration
+- `.github/workflows/dependabot-auto-merge.yml` - Auto-merge with cooldown
+- `.github/workflows/dependency-test.yml` - Comprehensive dependency tests
+- `.github/README.md` - Automation documentation
+
+**Release Management:**
+- `.github/workflows/release.yml` - Automated release workflow
+- `.goreleaser.yml` - GoReleaser configuration
+- `internal/version/version.go` - Version information module
+- `.github/CONVENTIONAL_COMMITS.md` - Commit guidelines
+- `.github/workflows/release-notes-template.md` - Release notes template
+
+### Benefits
+1. **Security** - Critical vulnerabilities patched within hours
+2. **Stability** - Community vetting period for non-critical updates
+3. **Automation** - Zero manual intervention for releases and dependency updates
+4. **Transparency** - All changes tracked via conventional commits and changelogs
+5. **Quality** - Every release tested on all platforms before publishing
+
+---
+
 ## [1.1.0] - 2025-12-13
 
 ### Changed - Browser Scanners Disabled by Default
@@ -177,6 +228,6 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Current Version**: 1.1.0  
+**Current Version**: 1.2.0  
 **Status**: Production Ready ✅
 

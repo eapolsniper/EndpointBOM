@@ -1,0 +1,281 @@
+name: Automated Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type (major, minor, patch)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - major
+          - minor
+          - patch
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  detect-version-bump:
+    name: Detect Version Bump
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      bump_type: ${{ steps.check.outputs.bump_type }}
+      current_version: ${{ steps.check.outputs.current_version }}
+      next_version: ${{ steps.check.outputs.next_version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper version detection
+      
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          # Get the latest tag, default to v0.0.0 if none exists
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $LATEST_TAG"
+      
+      - name: Analyze commits for version bump
+        id: check
+        run: |
+          LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
+          CURRENT_VERSION="${LATEST_TAG#v}"  # Remove 'v' prefix
+          
+          # Get commits since last tag
+          if [ "$LATEST_TAG" == "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%s" HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"%s" ${LATEST_TAG}..HEAD)
+          fi
+          
+          echo "Analyzing commits since $LATEST_TAG:"
+          echo "$COMMITS"
+          
+          # Determine bump type based on conventional commits
+          BUMP_TYPE="none"
+          
+          # Manual override from workflow dispatch
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.bump_type }}" != "auto" ]; then
+            BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+            echo "Manual bump type: $BUMP_TYPE"
+          else
+            # Check for breaking changes (MAJOR)
+            if echo "$COMMITS" | grep -qE "^(feat|fix|chore|refactor|perf|style|test|docs|build|ci)(\(.+\))?!:|\bBREAKING CHANGE:"; then
+              BUMP_TYPE="major"
+            # Check for new features (MINOR)
+            elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+              BUMP_TYPE="minor"
+            # Check for fixes, chores, etc (PATCH)
+            elif echo "$COMMITS" | grep -qE "^(fix|chore|refactor|perf|style|test|docs|build|ci|security|deps)(\(.+\))?:"; then
+              BUMP_TYPE="patch"
+            else
+              # No conventional commits found, check for any commits
+              if [ -n "$COMMITS" ]; then
+                BUMP_TYPE="patch"  # Default to patch if there are commits
+              fi
+            fi
+          fi
+          
+          echo "Detected bump type: $BUMP_TYPE"
+          
+          # Calculate next version
+          if [ "$BUMP_TYPE" == "none" ]; then
+            SHOULD_RELEASE="false"
+            NEXT_VERSION="$CURRENT_VERSION"
+          else
+            SHOULD_RELEASE="true"
+            
+            # Parse current version
+            IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+            MAJOR="${VERSION_PARTS[0]:-0}"
+            MINOR="${VERSION_PARTS[1]:-0}"
+            PATCH="${VERSION_PARTS[2]:-0}"
+            
+            # Bump version
+            case "$BUMP_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+            
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+          
+          echo "should_release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "Should release: $SHOULD_RELEASE"
+          echo "Current version: $CURRENT_VERSION"
+          echo "Next version: $NEXT_VERSION"
+
+  release:
+    name: Build and Release
+    needs: detect-version-bump
+    if: needs.detect-version-bump.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+      
+      - name: Install GoReleaser
+        run: |
+          curl -sL https://github.com/goreleaser/goreleaser/releases/download/v1.24.0/goreleaser_Linux_x86_64.tar.gz | tar xz
+          sudo mv goreleaser /usr/local/bin/
+          goreleaser --version
+      
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          NEXT_VERSION="v${{ needs.detect-version-bump.outputs.next_version }}"
+          
+          echo "Generating changelog from $LATEST_TAG to HEAD"
+          
+          if [ -z "$LATEST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${LATEST_TAG}..HEAD)
+          fi
+          
+          # Group commits by type
+          FEATURES=$(echo "$CHANGELOG" | grep -E "^- feat" || true)
+          FIXES=$(echo "$CHANGELOG" | grep -E "^- (fix|security)" || true)
+          CHORES=$(echo "$CHANGELOG" | grep -E "^- (chore|deps|build|ci)" || true)
+          DOCS=$(echo "$CHANGELOG" | grep -E "^- docs" || true)
+          OTHERS=$(echo "$CHANGELOG" | grep -vE "^- (feat|fix|security|chore|deps|build|ci|docs)" || true)
+          
+          # Build changelog
+          CHANGELOG_TEXT="## What's Changed in $NEXT_VERSION"$'\n\n'
+          
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG_TEXT+="### ✨ New Features"$'\n'
+            CHANGELOG_TEXT+="$FEATURES"$'\n\n'
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            CHANGELOG_TEXT+="### 🐛 Bug Fixes & Security"$'\n'
+            CHANGELOG_TEXT+="$FIXES"$'\n\n'
+          fi
+          
+          if [ -n "$CHORES" ]; then
+            CHANGELOG_TEXT+="### 🔧 Maintenance"$'\n'
+            CHANGELOG_TEXT+="$CHORES"$'\n\n'
+          fi
+          
+          if [ -n "$DOCS" ]; then
+            CHANGELOG_TEXT+="### 📚 Documentation"$'\n'
+            CHANGELOG_TEXT+="$DOCS"$'\n\n'
+          fi
+          
+          if [ -n "$OTHERS" ]; then
+            CHANGELOG_TEXT+="### 🔀 Other Changes"$'\n'
+            CHANGELOG_TEXT+="$OTHERS"$'\n\n'
+          fi
+          
+          CHANGELOG_TEXT+="**Full Changelog**: https://github.com/eapolsniper/endpointbom/compare/${LATEST_TAG}...${NEXT_VERSION}"
+          
+          # Save to file
+          echo "$CHANGELOG_TEXT" > /tmp/changelog.md
+          
+          echo "Generated changelog:"
+          cat /tmp/changelog.md
+      
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          VERSION="v${{ needs.detect-version-bump.outputs.next_version }}"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+      
+      - name: Run GoReleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          goreleaser release --clean --release-notes /tmp/changelog.md
+
+  update-changelog:
+    name: Update CHANGELOG.md
+    needs: [detect-version-bump, release]
+    if: needs.detect-version-bump.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      
+      - name: Update CHANGELOG.md
+        run: |
+          VERSION="v${{ needs.detect-version-bump.outputs.next_version }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create new changelog entry
+          NEW_ENTRY="## [${{ needs.detect-version-bump.outputs.next_version }}] - $DATE"$'\n\n'
+          NEW_ENTRY+="See the [GitHub Release](https://github.com/eapolsniper/endpointbom/releases/tag/$VERSION) for full details."$'\n\n'
+          NEW_ENTRY+="---"$'\n\n'
+          
+          # Insert after the first line (title)
+          if [ -f CHANGELOG.md ]; then
+            # Read first line
+            FIRST_LINE=$(head -n 1 CHANGELOG.md)
+            # Read rest of file
+            REST=$(tail -n +2 CHANGELOG.md)
+            # Combine
+            echo "$FIRST_LINE" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "$NEW_ENTRY" >> CHANGELOG.md
+            echo "$REST" >> CHANGELOG.md
+          else
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "$NEW_ENTRY" >> CHANGELOG.md
+          fi
+          
+          # Update current version at bottom
+          if grep -q "^**Current Version**:" CHANGELOG.md; then
+            sed -i "s/^**Current Version**:.*/**Current Version**: ${{ needs.detect-version-bump.outputs.next_version }}/" CHANGELOG.md
+          fi
+      
+      - name: Commit and push CHANGELOG.md
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add CHANGELOG.md
+          git commit -m "chore: update CHANGELOG.md for v${{ needs.detect-version-bump.outputs.next_version }}" || exit 0
+          git push origin main
+

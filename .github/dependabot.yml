@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # Go modules - security and version updates
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+    
+    # Limit concurrent PRs
+    open-pull-requests-limit: 10
+    
+    # Group security updates for easier review
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    
+    # Labels for identification
+    labels:
+      - "dependencies"
+      - "go"
+    
+    # Commit message configuration
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    
+    # Ignore major version bumps (too risky without review)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    
+    # Reviewers
+    reviewers:
+      - "eapolsniper"
+
+  # GitHub Actions - keep workflows up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+    
+    labels:
+      - "dependencies"
+      - "github-actions"
+    
+    commit-message:
+      prefix: "ci"
+    
+    reviewers:
+      - "eapolsniper"
+
