@@ -219,6 +219,24 @@ jobs:
           git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION"
       
+      - name: Debug - Check git status before GoReleaser
+        run: |
+          echo "=== Git Status ==="
+          git status
+          echo "=== Modified files ==="
+          git diff --name-only
+          echo "=== Untracked files ==="
+          git ls-files --others --exclude-standard
+      
+      - name: Clean git state
+        run: |
+          # Reset any modified files
+          git checkout -- .
+          # Remove untracked files and directories  
+          git clean -fdx
+          echo "=== Git Status After Clean ==="
+          git status
+      
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
