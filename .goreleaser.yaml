@@ -1,0 +1,69 @@
+# GoReleaser configuration for building and publishing releases
+# See https://goreleaser.com for documentation
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: endpointbom
+    main: ./cmd/endpointbom
+    binary: endpointbom
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: endpointbom
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - configs/example-config.yaml
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+brews:
+  - name: endpointbom
+    tap:
+      owner: eapolsniper
+      name: homebrew-tap
+    folder: Formula
+    homepage: https://github.com/eapolsniper/endpointbom
+    description: "Endpoint Bill of Materials Scanner - Comprehensive SBOM generation for developer endpoints"
+    license: "MIT"
+    install: |
+      bin.install "endpointbom"
+      (etc/"endpointbom").install "configs/example-config.yaml" => "config.yaml"
+    test: |
+      system "#{bin}/endpointbom", "--help"
+

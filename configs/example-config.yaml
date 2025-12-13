@@ -1,0 +1,69 @@
+# EndpointBOM Configuration File
+# This file can be used to configure the behavior of the EndpointBOM scanner
+
+# Paths to exclude from scanning (in addition to built-in sensitive paths)
+# Built-in exclusions include: .ssh, .aws, .gnupg, .kube, /etc/shadow, etc.
+exclude_paths:
+  # Add additional paths to exclude
+  # - /path/to/exclude
+  # - C:\Path\To\Exclude
+  # - /opt/proprietary-software
+
+# Scanners to disable (comment out or remove to enable all)
+disabled_scanners:
+  # Browser Extensions (DISABLED BY DEFAULT)
+  # These require Full Disk Access on macOS 10.14+ (TCC permissions)
+  # To enable: Remove from this list AND configure TCC via MDM (see DeploymentDocs/JAMF_DEPLOYMENT.md)
+  - chrome-extensions
+  - firefox-extensions
+  - edge-extensions
+  - safari-extensions
+  
+  # Package Managers
+  # - npm
+  # - pip
+  # - yarn
+  # - pnpm
+  # - brew
+  # - gem
+  # - cargo
+  # - composer
+  # - chocolatey
+  # - go
+  
+  # Applications
+  # - applications
+  
+  # IDEs
+  # - vscode
+  # - cursor
+  # - jetbrains
+  # - sublime
+
+# Require admin/root privileges (default: false)
+# When false, the tool auto-adjusts behavior based on actual privileges
+# When true, the tool will fail if not running as admin
+require_admin: false
+
+# Scan all user profiles (default: true)
+# Automatically adjusts to current user only if not running as admin
+# This is the expected behavior for enterprise endpoint inventory
+scan_all_users: true
+
+# Output directory for SBOM files
+# Default: ./scans (next to executable)
+# The directory is validated to prevent writing to system locations
+output_dir: "./scans"
+
+# Enable debug output (default: false)
+debug: false
+
+# Enable verbose output (default: false)
+verbose: false
+
+# Security Notes:
+# - Config and output paths are validated for security
+# - Sensitive files (.ssh, .aws, credentials) are automatically excluded
+# - Writing to system directories (/etc, /bin, C:\Windows) is blocked
+# - Path traversal attempts are prevented
+

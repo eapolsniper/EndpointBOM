@@ -1,0 +1,60 @@
+# Binaries
+endpointbom
+bin/endpointbom
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output files - SBOM files and scan results
+*.cyclonedx
+*.cdx.json
+*.json
+*.xml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+
+# Security Reports and Development Notes (should not be committed to public repos)
+CURSOR_OWASP_CHECK.md
+PROJECT_SUMMARY.md
+.gitignore_summary.md
+
+# Scan output directories (contain endpoint-specific data)
+scans/
+bin/scans/
+
+# Local configuration files (may contain environment-specific settings)
+endpointbom.yaml
+*.local.yaml
+
+# Build artifacts
+dist/
+
+# Test coverage
+*.out
+coverage.html
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Local development files
+.env
+.env.local
+
