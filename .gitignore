@@ -1,5 +1,5 @@
 # Binaries
-endpointbom
+/endpointbom
 bin/endpointbom
 *.exe
 *.dll
