@@ -97,6 +97,9 @@ release:
   # Draft release (set to false for automatic publishing)
   draft: false
   
+  # Allow replacing existing releases
+  mode: replace
+  
   # Header and footer for release notes
   header: |
     ## EndpointBOM v{{ .Version }}
