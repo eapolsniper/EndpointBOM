@@ -224,16 +224,18 @@ jobs:
           echo "=== Git Status ==="
           git status
           echo "=== Modified files ==="
-          git diff --name-only
+          git diff --name-only || true
           echo "=== Untracked files ==="
-          git ls-files --others --exclude-standard
+          git ls-files --others --exclude-standard || true
       
-      - name: Clean git state
+      - name: Clean auto-generated files
         run: |
-          # Reset any modified files
-          git checkout -- .
-          # Remove untracked files and directories  
-          git clean -fdx
+          # Only remove specific auto-generated files/directories
+          rm -f LICENSE.md
+          rm -rf completions/
+          rm -rf manpages/
+          # Reset README.md if it was modified
+          git checkout -- README.md 2>/dev/null || true
           echo "=== Git Status After Clean ==="
           git status
       
