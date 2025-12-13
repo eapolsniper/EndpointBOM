@@ -115,11 +115,6 @@ release:
     sudo mv endpointbom /usr/local/bin/
     ```
     
-    #### Homebrew (macOS)
-    ```bash
-    brew install eapolsniper/tap/endpointbom
-    ```
-    
     #### Windows
     Download the appropriate `.zip` file below and extract `endpointbom.exe` to your PATH.
     
@@ -157,24 +152,6 @@ release:
     - 💬 Discussions: https://github.com/eapolsniper/endpointbom/discussions
     
     **Author**: Tim Jensen ([@eapolsniper](https://github.com/eapolsniper))
-
-# Homebrew tap (optional - requires separate tap repository)
-brews:
-  - name: endpointbom
-    repository:
-      owner: eapolsniper
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    folder: Formula
-    homepage: https://github.com/eapolsniper/endpointbom
-    description: "CLI tool for scanning developer endpoints to capture Bill of Materials (BOM) data"
-    license: MIT
-    skip_upload: auto
-    test: |
-      system "#{bin}/endpointbom", "--version"
-    install: |
-      bin.install "endpointbom"
-      (etc/"endpointbom").install "configs/example-config.yaml" => "config.yaml"
 
 # Metadata
 metadata:
