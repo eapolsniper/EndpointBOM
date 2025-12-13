@@ -5,9 +5,10 @@ version: 1
 
 before:
   hooks:
-    # Ensure dependencies are up to date
-    - go mod tidy
-    - go mod download
+    # Dependencies are already managed in CI workflow
+    # Only run these locally if needed
+    # - go mod tidy
+    # - go mod download
 
 builds:
   - id: endpointbom
