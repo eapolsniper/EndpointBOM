@@ -166,4 +166,3 @@ func getInstallType(installTime time.Time) string {
 
 // Component is a local type alias
 type Component = scanners.Component
-
