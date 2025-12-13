@@ -30,6 +30,7 @@ jobs:
       bump_type: ${{ steps.check.outputs.bump_type }}
       current_version: ${{ steps.check.outputs.current_version }}
       next_version: ${{ steps.check.outputs.next_version }}
+      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
     
     steps:
       - name: Checkout code
@@ -64,10 +65,15 @@ jobs:
           # Determine bump type based on conventional commits
           BUMP_TYPE="none"
           
-          # Manual override from workflow dispatch
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.bump_type }}" != "auto" ]; then
-            BUMP_TYPE="${{ github.event.inputs.bump_type }}"
-            echo "Manual bump type: $BUMP_TYPE"
+          # Manual override from workflow dispatch - always release when manually triggered
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ "${{ github.event.inputs.bump_type }}" != "auto" ]; then
+              BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+            else
+              # Default to patch for manual triggers with auto
+              BUMP_TYPE="patch"
+            fi
+            echo "Manual trigger - bump type: $BUMP_TYPE"
           else
             # Check for breaking changes (MAJOR)
             if echo "$COMMITS" | grep -qE "^(feat|fix|chore|refactor|perf|style|test|docs|build|ci)(\(.+\))?!:|\bBREAKING CHANGE:"; then
@@ -132,7 +138,7 @@ jobs:
   release:
     name: Build and Release
     needs: detect-version-bump
-    if: needs.detect-version-bump.outputs.should_release == 'true'
+    if: needs.detect-version-bump.outputs.should_release == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     
     steps:
