@@ -239,6 +239,17 @@ jobs:
           echo "=== Git Status After Clean ==="
           git status
       
+      - name: Verify source structure
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Directory contents ==="
+          ls -la
+          echo "=== cmd directory ==="
+          ls -la cmd/ || echo "cmd directory not found!"
+          echo "=== cmd/endpointbom ==="
+          ls -la cmd/endpointbom/ || echo "cmd/endpointbom not found!"
+      
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
