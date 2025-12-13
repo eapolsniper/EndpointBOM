@@ -61,6 +61,11 @@ debug: false
 # Enable verbose output (default: false)
 verbose: false
 
+# Disable public IP gathering from external services (default: false)
+# When enabled, public IP will not be queried from external services
+# This avoids making external network requests to untrusted services
+disable_public_ip: false
+
 # Security Notes:
 # - Config and output paths are validated for security
 # - Sensitive files (.ssh, .aws, credentials) are automatically excluded

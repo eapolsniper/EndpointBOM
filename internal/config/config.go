@@ -32,6 +32,9 @@ type Config struct {
 
 	// Verbose enables verbose output
 	Verbose bool `yaml:"verbose"`
+
+	// DisablePublicIP disables public IP address gathering from external services
+	DisablePublicIP bool `yaml:"disable_public_ip"`
 }
 
 // DefaultConfig returns a Config with default values including sensitive path exclusions

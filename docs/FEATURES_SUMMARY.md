@@ -274,12 +274,12 @@ sudo ./endpointbom-darwin-amd64
 ## 📚 Documentation
 
 - **README.md** - Project overview and quick start
-- **QUICKSTART.md** - Fast setup and common commands
+- **docs/QUICKSTART.md** - Fast setup and common commands
 - **docs/USAGE.md** - Comprehensive usage guide
 - **docs/BUILD.md** - Building from source
-- **BROWSER_EXTENSIONS.md** - Browser extension security guide
-- **NETWORK_INFO.md** - Network information collection details
-- **SECURITY_IMPROVEMENTS.md** - Security enhancements documentation
+- **docs/BROWSER_EXTENSIONS.md** - Browser extension security guide
+- **docs/NETWORK_INFO.md** - Network information collection details
+- **docs/SECURITY_IMPROVEMENTS.md** - Security enhancements documentation
 
 ## 🎯 Real-World Scenarios
 

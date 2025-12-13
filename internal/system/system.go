@@ -25,7 +25,7 @@ type Info struct {
 }
 
 // GetSystemInfo gathers system information
-func GetSystemInfo() (*Info, error) {
+func GetSystemInfo(disablePublicIP bool) (*Info, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hostname: %w", err)
@@ -51,11 +51,16 @@ func GetSystemInfo() (*Info, error) {
 	}
 
 	// Get public IP (non-blocking, may fail if no internet)
-	publicIP, err := getPublicIP()
-	if err == nil {
-		info.PublicIP = publicIP
+	// Can be disabled to avoid external service calls
+	if disablePublicIP {
+		info.PublicIP = "disabled"
 	} else {
-		info.PublicIP = "unavailable"
+		publicIP, err := getPublicIP()
+		if err == nil {
+			info.PublicIP = publicIP
+		} else {
+			info.PublicIP = "unavailable"
+		}
 	}
 
 	return info, nil
@@ -291,6 +296,7 @@ func getLocalIPs() ([]string, error) {
 
 // getPublicIP attempts to determine the public IP address
 // Returns error if unable to reach external service (no internet, firewall, etc.)
+// SECURITY: Uses strong input validation on untrusted external services
 func getPublicIP() (string, error) {
 	// Try multiple services for reliability
 	services := []string{
@@ -310,20 +316,66 @@ func getPublicIP() (string, error) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK {
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				continue
-			}
-			
-			ip := strings.TrimSpace(string(body))
-			// Validate it's actually an IP address
-			if net.ParseIP(ip) != nil {
-				return ip, nil
-			}
+		if resp.StatusCode != http.StatusOK {
+			continue
 		}
+
+		// SECURITY: Limit response size to prevent memory exhaustion
+		// An IP address should be max 45 chars (IPv6 with colons)
+		// We allow 100 bytes to be safe, but prevent large responses
+		limitedReader := io.LimitReader(resp.Body, 100)
+		body, err := io.ReadAll(limitedReader)
+		if err != nil {
+			continue
+		}
+		
+		ip := strings.TrimSpace(string(body))
+		
+		// SECURITY: Strict validation of IP address format
+		if !isValidPublicIP(ip) {
+			continue // Invalid IP format, try next service
+		}
+		
+		return ip, nil
 	}
 
 	return "", fmt.Errorf("unable to determine public IP")
+}
+
+// isValidPublicIP performs strict validation on IP addresses from untrusted sources
+func isValidPublicIP(ip string) bool {
+	// Must be a valid IP address
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false
+	}
+	
+	// SECURITY: Reject private/internal IP addresses
+	// Public IP services should only return public IPs
+	// This prevents potential SSRF or manipulation attacks
+	if parsedIP.IsLoopback() || parsedIP.IsPrivate() || parsedIP.IsLinkLocalUnicast() || 
+	   parsedIP.IsLinkLocalMulticast() || parsedIP.IsMulticast() {
+		return false
+	}
+	
+	// Additional check: IP string should be reasonable length
+	// IPv4: max 15 chars (xxx.xxx.xxx.xxx)
+	// IPv6: max 39 chars (8 groups of 4 hex digits with colons)
+	if len(ip) > 45 {
+		return false
+	}
+	
+	// Ensure the IP string doesn't contain any unexpected characters
+	// Valid characters: 0-9, a-f, A-F, ., :
+	for _, char := range ip {
+		if !((char >= '0' && char <= '9') || 
+		     (char >= 'a' && char <= 'f') || 
+		     (char >= 'A' && char <= 'F') || 
+		     char == '.' || char == ':') {
+			return false
+		}
+	}
+	
+	return true
 }
 
