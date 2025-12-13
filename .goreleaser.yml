@@ -97,9 +97,6 @@ release:
   # Draft release (set to false for automatic publishing)
   draft: false
   
-  # Discussion category for release
-  discussion_category_name: Releases
-  
   # Header and footer for release notes
   header: |
     ## EndpointBOM v{{ .Version }}
