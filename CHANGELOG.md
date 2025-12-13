@@ -1,5 +1,13 @@
 # EndpointBOM Changelog
 
+## [0.0.11] - 2025-12-13
+
+See the [GitHub Release](https://github.com/eapolsniper/endpointbom/releases/tag/v0.0.11) for full details.
+
+---
+
+
+
 ## [1.2.0] - 2025-12-13
 
 ### Added - Automated Release Management
@@ -230,4 +238,3 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 **Current Version**: 1.2.0  
 **Status**: Production Ready ✅
-
