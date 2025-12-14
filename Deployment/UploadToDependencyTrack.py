@@ -143,6 +143,29 @@ class DependencyTrackClient:
             print(f"   ⚠️  Error looking up project: {response.status_code}")
             return None
     
+    def update_project_description(self, project_uuid: str, description: str) -> bool:
+        """
+        Update a project's description
+        
+        API: PATCH /api/v1/project/{uuid}
+        """
+        payload = {
+            "uuid": project_uuid,
+            "description": description
+        }
+        
+        response = requests.patch(
+            f"{self.base_url}/api/v1/project/{project_uuid}",
+            headers=self.headers,
+            json=payload
+        )
+        
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"   ⚠️  Failed to update description: {response.status_code}")
+            return False
+    
     def update_project_properties(self, 
                                   project_uuid: str,
                                   properties: List[Dict[str, str]]) -> bool:
@@ -607,6 +630,8 @@ def main():
                 )
             else:
                 print(f"\n📦 Child project already exists: {child_project['uuid']}")
+                # Update description with latest metadata
+                client.update_project_description(child_project['uuid'], child_description)
             
             if not child_project:
                 print(f"❌ Failed to create child project for {sbom_type}")

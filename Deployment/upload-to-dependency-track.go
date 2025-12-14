@@ -222,6 +222,41 @@ func (c *DependencyTrackClient) GetProject(name, version string) (*Project, erro
 	return nil, fmt.Errorf("error looking up project: %d", resp.StatusCode)
 }
 
+// UpdateProjectDescription updates a project's description
+func (c *DependencyTrackClient) UpdateProjectDescription(projectUUID, description string) error {
+	payload := map[string]interface{}{
+		"uuid":        projectUUID,
+		"description": description,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest("PATCH", c.BaseURL+"/api/v1/project/"+projectUUID, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	for k, v := range c.Headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to update description: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 // UploadBOM uploads a BOM file to a project
 func (c *DependencyTrackClient) UploadBOM(projectUUID string, bomFile string) (string, error) {
 	fmt.Printf("\n📤 Uploading BOM: %s\n", filepath.Base(bomFile))
