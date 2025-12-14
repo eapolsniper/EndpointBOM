@@ -127,6 +127,7 @@ class DependencyTrackClient:
         Get an existing project by name and version
         
         API: GET /api/v1/project/lookup?name={name}&version={version}
+        Note: requests library automatically URL-encodes params
         """
         response = requests.get(
             f"{self.base_url}/api/v1/project/lookup",

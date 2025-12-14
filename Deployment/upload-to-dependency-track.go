@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -188,8 +189,11 @@ func (c *DependencyTrackClient) CreateProject(name, version, classifier, descrip
 
 // GetProject looks up an existing project
 func (c *DependencyTrackClient) GetProject(name, version string) (*Project, error) {
-	url := fmt.Sprintf("%s/api/v1/project/lookup?name=%s&version=%s", c.BaseURL, name, version)
-	req, err := http.NewRequest("GET", url, nil)
+	// URL encode parameters to handle spaces and special characters
+	encodedName := url.QueryEscape(name)
+	encodedVersion := url.QueryEscape(version)
+	apiURL := fmt.Sprintf("%s/api/v1/project/lookup?name=%s&version=%s", c.BaseURL, encodedName, encodedVersion)
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
