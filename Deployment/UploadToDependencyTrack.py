@@ -21,7 +21,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Optional, Dict, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Configuration - UPDATE THESE FOR YOUR ENVIRONMENT
 DEPENDENCY_TRACK_URL = "http://localhost:8081"  # Change to your Dependency-Track URL
@@ -333,6 +333,84 @@ def build_project_description(base_description: str, metadata: Dict) -> str:
     return " | ".join(description_parts)
 
 
+def get_most_recent_scan_files(scans_dir: Path) -> List[Path]:
+    """
+    Find the most recent scan files by timestamp in the filename.
+    Expected format: hostname.timestamp.type.cdx.json
+    Returns only files from the most recent scan.
+    """
+    all_files = list(scans_dir.glob("*.cdx.json"))
+    if not all_files:
+        return []
+    
+    # Extract timestamps from filenames (format: hostname.YYYYMMDDHHmmss.type.cdx.json)
+    file_timestamps = {}
+    for file in all_files:
+        parts = file.stem.split('.')
+        if len(parts) >= 3:
+            # Second part should be timestamp (e.g., "20251214-112345")
+            timestamp_str = parts[1]
+            try:
+                # Parse timestamp to validate format
+                timestamp = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S")
+                file_timestamps[file] = timestamp
+            except ValueError:
+                print(f"⚠️  Skipping file with invalid timestamp format: {file.name}")
+                continue
+    
+    if not file_timestamps:
+        return []
+    
+    # Find the most recent timestamp
+    most_recent_timestamp = max(file_timestamps.values())
+    
+    # Get all files matching the most recent timestamp
+    recent_files = [f for f, ts in file_timestamps.items() if ts == most_recent_timestamp]
+    
+    return recent_files
+
+
+def archive_files(files: List[Path], scans_dir: Path) -> None:
+    """Move uploaded files to archive subdirectory"""
+    archive_dir = scans_dir / "archive"
+    archive_dir.mkdir(exist_ok=True)
+    
+    print(f"\n📦 Archiving {len(files)} uploaded files...")
+    for file in files:
+        dest = archive_dir / file.name
+        file.rename(dest)
+        print(f"   ✅ Moved to archive: {file.name}")
+
+
+def cleanup_old_files(scans_dir: Path, days: int = 60) -> None:
+    """Remove files older than specified days from scans/ and scans/archive/"""
+    cutoff_date = datetime.now() - timedelta(days=days)
+    
+    print(f"\n🧹 Cleaning up files older than {days} days...")
+    
+    # Check both main scans directory and archive
+    directories = [scans_dir, scans_dir / "archive"]
+    
+    total_removed = 0
+    for directory in directories:
+        if not directory.exists():
+            continue
+        
+        for file in directory.glob("*.cdx.json"):
+            # Get file modification time
+            file_mtime = datetime.fromtimestamp(file.stat().st_mtime)
+            
+            if file_mtime < cutoff_date:
+                file.unlink()
+                total_removed += 1
+                print(f"   🗑️  Removed old file: {file.relative_to(scans_dir.parent)}")
+    
+    if total_removed == 0:
+        print("   ✅ No old files to remove")
+    else:
+        print(f"   ✅ Removed {total_removed} old file(s)")
+
+
 def main():
     """Main execution function"""
     print("=" * 80)
@@ -348,13 +426,20 @@ def main():
         print(f"❌ Scans directory not found: {scans_dir}")
         sys.exit(1)
     
-    # Group SBOM files by hostname
-    sbom_files = list(scans_dir.glob("*.cdx.json"))
+    # Get only the most recent scan files
+    print(f"\n🔍 Looking for most recent scan files in {scans_dir}...")
+    sbom_files = get_most_recent_scan_files(scans_dir)
+    
     if not sbom_files:
-        print(f"❌ No SBOM files found in {scans_dir}")
+        print(f"❌ No valid SBOM files found in {scans_dir}")
         sys.exit(1)
     
-    print(f"\n📁 Found {len(sbom_files)} SBOM files")
+    # Extract timestamp from first file for logging
+    first_file_parts = sbom_files[0].stem.split('.')
+    scan_timestamp = first_file_parts[1] if len(first_file_parts) >= 2 else "unknown"
+    
+    print(f"\n📁 Found most recent scan: {scan_timestamp}")
+    print(f"   Files to upload ({len(sbom_files)}):")
     for sbom in sbom_files:
         print(f"   - {sbom.name}")
     
@@ -367,7 +452,7 @@ def main():
                 hostname_groups[hostname] = []
             hostname_groups[hostname].append(sbom_file)
     
-    print(f"\n🖥️  Found {len(hostname_groups)} unique hostnames:")
+    print(f"\n🖥️  Found {len(hostname_groups)} unique hostname(s):")
     for hostname in hostname_groups:
         print(f"   - {hostname} ({len(hostname_groups[hostname])} BOMs)")
     
@@ -561,6 +646,12 @@ def main():
     print("\n" + "=" * 80)
     print("✅ All uploads complete!")
     print("=" * 80)
+    
+    # Archive uploaded files
+    archive_files(sbom_files, scans_dir)
+    
+    # Cleanup old files (>60 days)
+    cleanup_old_files(scans_dir, days=60)
 
 
 if __name__ == "__main__":

@@ -382,6 +382,123 @@ func FormatVersionFromTimestamp(timestamp string) string {
 	return t.Format("2006-01-02-1504")
 }
 
+// getMostRecentScanFiles finds the most recent scan files by timestamp
+func getMostRecentScanFiles(scansDir string) ([]string, error) {
+	allFiles, err := filepath.Glob(filepath.Join(scansDir, "*.cdx.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(allFiles) == 0 {
+		return nil, nil
+	}
+
+	// Extract timestamps from filenames (format: hostname.YYYYMMDD-HHmmss.type.cdx.json)
+	fileTimestamps := make(map[string]time.Time)
+	for _, file := range allFiles {
+		baseName := filepath.Base(file)
+		parts := strings.Split(strings.TrimSuffix(baseName, ".cdx.json"), ".")
+		
+		if len(parts) >= 2 {
+			timestampStr := parts[1]
+			// Parse timestamp (format: 20251214-112345)
+			timestamp, err := time.Parse("20060102-150405", timestampStr)
+			if err != nil {
+				fmt.Printf("⚠️  Skipping file with invalid timestamp format: %s\n", baseName)
+				continue
+			}
+			fileTimestamps[file] = timestamp
+		}
+	}
+
+	if len(fileTimestamps) == 0 {
+		return nil, nil
+	}
+
+	// Find the most recent timestamp
+	var mostRecentTime time.Time
+	for _, ts := range fileTimestamps {
+		if ts.After(mostRecentTime) {
+			mostRecentTime = ts
+		}
+	}
+
+	// Get all files matching the most recent timestamp
+	var recentFiles []string
+	for file, ts := range fileTimestamps {
+		if ts.Equal(mostRecentTime) {
+			recentFiles = append(recentFiles, file)
+		}
+	}
+
+	return recentFiles, nil
+}
+
+// archiveFiles moves uploaded files to archive subdirectory
+func archiveFiles(files []string, scansDir string) error {
+	archiveDir := filepath.Join(scansDir, "archive")
+	if err := os.MkdirAll(archiveDir, 0755); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n📦 Archiving %d uploaded files...\n", len(files))
+	for _, file := range files {
+		baseName := filepath.Base(file)
+		dest := filepath.Join(archiveDir, baseName)
+		if err := os.Rename(file, dest); err != nil {
+			return err
+		}
+		fmt.Printf("   ✅ Moved to archive: %s\n", baseName)
+	}
+
+	return nil
+}
+
+// cleanupOldFiles removes files older than specified days from scans/ and scans/archive/
+func cleanupOldFiles(scansDir string, days int) error {
+	cutoffTime := time.Now().AddDate(0, 0, -days)
+	
+	fmt.Printf("\n🧹 Cleaning up files older than %d days...\n", days)
+	
+	// Check both main scans directory and archive
+	directories := []string{scansDir, filepath.Join(scansDir, "archive")}
+	
+	totalRemoved := 0
+	for _, dir := range directories {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			continue
+		}
+
+		files, err := filepath.Glob(filepath.Join(dir, "*.cdx.json"))
+		if err != nil {
+			continue
+		}
+
+		for _, file := range files {
+			info, err := os.Stat(file)
+			if err != nil {
+				continue
+			}
+
+			if info.ModTime().Before(cutoffTime) {
+				if err := os.Remove(file); err == nil {
+					relPath, _ := filepath.Rel(filepath.Dir(scansDir), file)
+					fmt.Printf("   🗑️  Removed old file: %s\n", relPath)
+					totalRemoved++
+				}
+			}
+		}
+	}
+
+	if totalRemoved == 0 {
+		fmt.Println("   ✅ No old files to remove")
+	} else {
+		fmt.Printf("   ✅ Removed %d old file(s)\n", totalRemoved)
+	}
+
+	return nil
+}
+
 func main() {
 	fmt.Println("=" + strings.Repeat("=", 79))
 	fmt.Println("Dependency-Track SBOM Upload Tool")
@@ -406,19 +523,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Find SBOM files
-	files, err := filepath.Glob(filepath.Join(scansDir, "*.cdx.json"))
+	// Get only the most recent scan files
+	fmt.Printf("\n🔍 Looking for most recent scan files in %s...\n", scansDir)
+	files, err := getMostRecentScanFiles(scansDir)
 	if err != nil {
 		fmt.Printf("❌ Error finding SBOM files: %v\n", err)
 		os.Exit(1)
 	}
 
 	if len(files) == 0 {
-		fmt.Printf("❌ No SBOM files found in %s\n", scansDir)
+		fmt.Printf("❌ No valid SBOM files found in %s\n", scansDir)
 		os.Exit(1)
 	}
 
-	fmt.Printf("\n📁 Found %d SBOM files\n", len(files))
+	// Extract timestamp from first file for logging
+	firstFileBase := filepath.Base(files[0])
+	parts := strings.Split(strings.TrimSuffix(firstFileBase, ".cdx.json"), ".")
+	scanTimestamp := "unknown"
+	if len(parts) >= 2 {
+		scanTimestamp = parts[1]
+	}
+
+	fmt.Printf("\n📁 Found most recent scan: %s\n", scanTimestamp)
+	fmt.Printf("   Files to upload (%d):\n", len(files))
 	for _, file := range files {
 		fmt.Printf("   - %s\n", filepath.Base(file))
 	}
@@ -588,5 +715,15 @@ func main() {
 	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Println("✅ All uploads complete!")
 	fmt.Println(strings.Repeat("=", 80))
+
+	// Archive uploaded files
+	if err := archiveFiles(files, scansDir); err != nil {
+		fmt.Printf("⚠️  Warning: Failed to archive files: %v\n", err)
+	}
+
+	// Cleanup old files (>60 days)
+	if err := cleanupOldFiles(scansDir, 60); err != nil {
+		fmt.Printf("⚠️  Warning: Failed to cleanup old files: %v\n", err)
+	}
 }
 
