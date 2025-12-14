@@ -2,13 +2,22 @@
 
 ## Install
 
+> **Note**: Download the latest release from the [Releases page](https://github.com/eapolsniper/EndpointBOM/releases)
+
 ```bash
-# Download latest release
-curl -L https://github.com/eapolsniper/EndpointBOM/releases/latest/download/endpointbom_$(uname -s)_$(uname -m).tar.gz -o endpointbom.tar.gz
+# macOS ARM (M1/M2/M3)
+curl -L https://github.com/eapolsniper/EndpointBOM/releases/latest/download/endpointbom_Darwin_arm64.tar.gz -o endpointbom.tar.gz
 
-# Extract
+# macOS Intel
+curl -L https://github.com/eapolsniper/EndpointBOM/releases/latest/download/endpointbom_Darwin_amd64.tar.gz -o endpointbom.tar.gz
+
+# Linux AMD64
+curl -L https://github.com/eapolsniper/EndpointBOM/releases/latest/download/endpointbom_Linux_amd64.tar.gz -o endpointbom.tar.gz
+
+# Extract and install
 tar -xzf endpointbom.tar.gz
-
+sudo mv endpointbom /usr/local/bin/
+```
 
 ## Run Scan
 
@@ -43,11 +52,11 @@ tar -xzf endpointbom.tar.gz
 
 ## Output Files
 
-- `scans/hostname.timestamp.package-managers.cdx.json` - npm, pip, brew, etc.
-- `scans/hostname.timestamp.applications.cdx.json` - Installed apps
-- `scans/hostname.timestamp.ide-extensions.cdx.json` - VSCode, Cursor, etc.
-- `scans/hostname.timestamp.browser-extensions.cdx.json` - Chrome, Firefox, etc. (disabled by default)
-- `scans/hostname.timestamp.scan.zip` - All files archived, including log files from package managers
+- `scans/developer-laptop.timestamp.package-managers.cdx.json` - npm, pip, brew, etc.
+- `scans/developer-laptop.timestamp.applications.cdx.json` - Installed apps
+- `scans/developer-laptop.timestamp.ide-extensions.cdx.json` - VSCode, Cursor, etc.
+- `scans/developer-laptop.timestamp.browser-extensions.cdx.json` - Chrome, Firefox, etc. (disabled by default)
+- `scans/developer-laptop.timestamp.scan.zip` - All files archived, including log files from package managers
 
 Note: The .zip file is not actually used by Dependency-track or any other tool. These are package manager logs and the json files for investigation purposes later if needed. You can either ignore these, or upload them to a server somewhere and store for a period of time incase they're needed. 
 

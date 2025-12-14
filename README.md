@@ -57,6 +57,17 @@
   - `{hostname}.{timestamp}.browser-extensions.cdx.json` 
 - Includes metadata: hostname, OS version, logged-in users, local IPs, public IP, timestamp
 
+### Uploading to Dependency-Track
+
+The generated SBOM files can be uploaded to [Dependency-Track](https://dependencytrack.org/) for analysis and monitoring.
+
+See **[Deployment/README.md](Deployment/README.md)** for:
+- Python upload script (simple, requires Python)
+- Go binary uploader (no dependencies, embeds credentials)
+- Detailed upload instructions
+
+**Quick Start**: See [TLDR.md](TLDR.md#upload-to-dependency-track-optional) for copy-paste commands.
+
 ## Installation
 
 ### Prerequisites

@@ -23,9 +23,9 @@ from pathlib import Path
 from typing import Optional, Dict, List
 from datetime import datetime
 
-# Configuration
-DEPENDENCY_TRACK_URL = "http://localhost:8081"
-API_KEY = "YOURAPIKEYHERE"
+# Configuration - UPDATE THESE FOR YOUR ENVIRONMENT
+DEPENDENCY_TRACK_URL = "http://localhost:8081"  # Change to your Dependency-Track URL
+API_KEY = "odt_YOUR_API_KEY_HERE"  # Get from Dependency-Track: Settings → Teams → API Keys
 
 # SBOM file mapping with classifiers
 # Classifiers: APPLICATION, FRAMEWORK, LIBRARY, CONTAINER, OPERATING_SYSTEM, DEVICE, FIRMWARE, FILE

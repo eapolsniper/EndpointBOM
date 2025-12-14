@@ -155,10 +155,10 @@ Browser Extensions: 24
 Output Directory: ./scans
 
 === Generating SBOMs ===
-Generated: hostname.20251213-112542.package-managers.cdx.json
-Generated: hostname.20251213-112542.applications.cdx.json
-Generated: hostname.20251213-112542.ide-extensions.cdx.json
-Generated: hostname.20251213-112542.browser-extensions.cdx.json ← NEW!
+Generated: developer-laptop.20251213-112542.package-managers.cdx.json
+Generated: developer-laptop.20251213-112542.applications.cdx.json
+Generated: developer-laptop.20251213-112542.ide-extensions.cdx.json
+Generated: developer-laptop.20251213-112542.browser-extensions.cdx.json ← NEW!
 
 ✓ Scan complete!
 ```

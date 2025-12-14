@@ -151,9 +151,9 @@ Browser Extensions: 0 (disabled by default)
 Output Directory: /Users/jsmith/scans
 
 === Generating SBOMs ===
-Generated: hostname.20251213-120000.package-managers.cdx.json
-Generated: hostname.20251213-120000.applications.cdx.json
-Generated: hostname.20251213-120000.ide-extensions.cdx.json
+Generated: developer-laptop.20251213-120000.package-managers.cdx.json
+Generated: developer-laptop.20251213-120000.applications.cdx.json
+Generated: developer-laptop.20251213-120000.ide-extensions.cdx.json
 
 ✓ Scan complete!
 ```

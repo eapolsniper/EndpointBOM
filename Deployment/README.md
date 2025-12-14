@@ -97,11 +97,11 @@ Binaries will be created in `dist/`:
 The tool creates a hierarchical structure in Dependency-Track:
 
 ```
-📦 Tims-MacBook-Pro.local (DEVICE) - Parent
-   ├── 📦 Tims-MacBook-Pro.local - package-managers (LIBRARY)
-   ├── 📦 Tims-MacBook-Pro.local - applications (APPLICATION)
-   ├── 📦 Tims-MacBook-Pro.local - ide-extensions (LIBRARY)
-   └── 📦 Tims-MacBook-Pro.local - browser-extensions (LIBRARY)
+📦 developer-laptop.local (DEVICE) - Parent
+   ├── 📦 developer-laptop.local - package-managers (LIBRARY)
+   ├── 📦 developer-laptop.local - applications (APPLICATION)
+   ├── 📦 developer-laptop.local - ide-extensions (LIBRARY)
+   └── 📦 developer-laptop.local - browser-extensions (LIBRARY)
 ```
 
 ### Versioning

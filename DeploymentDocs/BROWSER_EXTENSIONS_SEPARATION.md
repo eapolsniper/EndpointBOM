@@ -134,10 +134,10 @@ Browser Extensions: 24          ← Clearly separated!
 Output Directory: ./scans
 
 === Generating SBOMs ===
-Generated: Tims-MacBook-Pro.local.20251213-112542.package-managers.cdx.json (89 KB)
-Generated: Tims-MacBook-Pro.local.20251213-112542.applications.cdx.json (63 KB)
-Generated: Tims-MacBook-Pro.local.20251213-112542.ide-extensions.cdx.json (3.7 KB)
-Generated: Tims-MacBook-Pro.local.20251213-112542.browser-extensions.cdx.json (17 KB) ← NEW!
+Generated: developer-laptop.local.20251213-112542.package-managers.cdx.json (89 KB)
+Generated: developer-laptop.local.20251213-112542.applications.cdx.json (63 KB)
+Generated: developer-laptop.local.20251213-112542.ide-extensions.cdx.json (3.7 KB)
+Generated: developer-laptop.local.20251213-112542.browser-extensions.cdx.json (17 KB) ← NEW!
 ```
 
 ### Browser Extensions File Content
@@ -147,7 +147,7 @@ Generated: Tims-MacBook-Pro.local.20251213-112542.browser-extensions.cdx.json (1
     "timestamp": "2025-12-13T11:25:42-06:00",
     "component": {
       "type": "device",
-      "name": "Tims-MacBook-Pro.local",
+      "name": "developer-laptop.local",
       "properties": [
         {
           "name": "scan_category",
@@ -222,11 +222,11 @@ done
 ```bash
 # Check browser extensions against threat intel
 curl https://threat-intel.example.com/api/browser-extensions \
-  -d @Tims-MacBook-Pro.local.20251213-112542.browser-extensions.cdx.json
+  -d @developer-laptop.local.20251213-112542.browser-extensions.cdx.json
 
 # Separate check for IDE extensions
 curl https://threat-intel.example.com/api/ide-extensions \
-  -d @Tims-MacBook-Pro.local.20251213-112542.ide-extensions.cdx.json
+  -d @developer-laptop.local.20251213-112542.ide-extensions.cdx.json
 ```
 
 ### Use Case 5: Automated Security Scanning

@@ -84,13 +84,13 @@ The tool will:
 
 **Example output:**
 ```
-📦 Creating project: Tims-MacBook-Pro.local v latest
+📦 Creating project: developer-laptop.local v latest
    ✅ Created project UUID: abc123...
 
 📤 Uploading BOM: package-managers.cdx.json
    ✅ BOM uploaded successfully
 
-✅ Successfully uploaded 4 BOMs for Tims-MacBook-Pro.local
+✅ Successfully uploaded 4 BOMs for developer-laptop.local
 🔗 View in Dependency-Track:
    https://dtrack.yourcompany.com/projects/abc123...
 ```

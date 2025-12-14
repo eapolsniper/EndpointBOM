@@ -29,6 +29,9 @@ Thumbs.db
 # Go
 vendor/
 
+# Node.js
+node_modules/
+
 # Security Reports and Development Notes (should not be committed to public repos)
 CURSOR_OWASP_CHECK.md
 PROJECT_SUMMARY.md
