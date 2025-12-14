@@ -1,18 +1,14 @@
-name: Automated Release
+name: Manual Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       bump_type:
         description: 'Version bump type (major, minor, patch)'
         required: false
-        default: 'auto'
+        default: 'patch'
         type: choice
         options:
-          - auto
           - major
           - minor
           - patch
@@ -46,99 +42,52 @@ jobs:
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Latest tag: $LATEST_TAG"
       
-      - name: Analyze commits for version bump
+      - name: Calculate version bump
         id: check
         run: |
           LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
           CURRENT_VERSION="${LATEST_TAG#v}"  # Remove 'v' prefix
           
-          # Get commits since last tag
-          if [ "$LATEST_TAG" == "v0.0.0" ]; then
-            COMMITS=$(git log --pretty=format:"%s" HEAD)
-          else
-            COMMITS=$(git log --pretty=format:"%s" ${LATEST_TAG}..HEAD)
-          fi
+          # Get bump type from manual input
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
           
-          echo "Analyzing commits since $LATEST_TAG:"
-          echo "$COMMITS"
+          echo "Current version: $CURRENT_VERSION"
+          echo "Requested bump type: $BUMP_TYPE"
           
-          # Determine bump type based on conventional commits
-          BUMP_TYPE="none"
+          # Parse current version
+          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR="${VERSION_PARTS[0]:-0}"
+          MINOR="${VERSION_PARTS[1]:-0}"
+          PATCH="${VERSION_PARTS[2]:-0}"
           
-          # Manual override from workflow dispatch - always release when manually triggered
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            if [ "${{ github.event.inputs.bump_type }}" != "auto" ]; then
-              BUMP_TYPE="${{ github.event.inputs.bump_type }}"
-            else
-              # Default to patch for manual triggers with auto
-              BUMP_TYPE="patch"
-            fi
-            echo "Manual trigger - bump type: $BUMP_TYPE"
-          else
-            # Check for breaking changes (MAJOR)
-            if echo "$COMMITS" | grep -qE "^(feat|fix|chore|refactor|perf|style|test|docs|build|ci)(\(.+\))?!:|\bBREAKING CHANGE:"; then
-              BUMP_TYPE="major"
-            # Check for new features (MINOR)
-            elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
-              BUMP_TYPE="minor"
-            # Check for fixes, chores, etc (PATCH)
-            elif echo "$COMMITS" | grep -qE "^(fix|chore|refactor|perf|style|test|docs|build|ci|security|deps)(\(.+\))?:"; then
-              BUMP_TYPE="patch"
-            else
-              # No conventional commits found, check for any commits
-              if [ -n "$COMMITS" ]; then
-                BUMP_TYPE="patch"  # Default to patch if there are commits
-              fi
-            fi
-          fi
+          # Bump version based on type
+          case "$BUMP_TYPE" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
           
-          echo "Detected bump type: $BUMP_TYPE"
+          NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           
-          # Calculate next version
-          if [ "$BUMP_TYPE" == "none" ]; then
-            SHOULD_RELEASE="false"
-            NEXT_VERSION="$CURRENT_VERSION"
-          else
-            SHOULD_RELEASE="true"
-            
-            # Parse current version
-            IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
-            MAJOR="${VERSION_PARTS[0]:-0}"
-            MINOR="${VERSION_PARTS[1]:-0}"
-            PATCH="${VERSION_PARTS[2]:-0}"
-            
-            # Bump version
-            case "$BUMP_TYPE" in
-              major)
-                MAJOR=$((MAJOR + 1))
-                MINOR=0
-                PATCH=0
-                ;;
-              minor)
-                MINOR=$((MINOR + 1))
-                PATCH=0
-                ;;
-              patch)
-                PATCH=$((PATCH + 1))
-                ;;
-            esac
-            
-            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          fi
-          
-          echo "should_release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
+          echo "should_release=true" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           
-          echo "Should release: $SHOULD_RELEASE"
-          echo "Current version: $CURRENT_VERSION"
-          echo "Next version: $NEXT_VERSION"
+          echo "Will release: v$NEXT_VERSION"
 
   release:
     name: Build and Release
     needs: detect-version-bump
-    if: needs.detect-version-bump.outputs.should_release == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     
     steps:
@@ -265,7 +214,6 @@ jobs:
   update-changelog:
     name: Update CHANGELOG.md
     needs: [detect-version-bump, release]
-    if: needs.detect-version-bump.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     
     steps:
