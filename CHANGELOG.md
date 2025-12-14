@@ -1,5 +1,13 @@
 # EndpointBOM Changelog
 
+## [0.0.13] - 2025-12-14
+
+See the [GitHub Release](https://github.com/eapolsniper/endpointbom/releases/tag/v0.0.13) for full details.
+
+---
+
+
+
 ## [0.0.12] - 2025-12-14
 
 See the [GitHub Release](https://github.com/eapolsniper/endpointbom/releases/tag/v0.0.12) for full details.
