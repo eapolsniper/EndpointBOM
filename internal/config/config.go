@@ -33,7 +33,7 @@ type Config struct {
 	// Verbose enables verbose output
 	Verbose bool `yaml:"verbose"`
 
-	// DisablePublicIP disables public IP address gathering from external services
+	// DisablePublicIP disables public IP address gathering from external services (default: true)
 	DisablePublicIP bool `yaml:"disable_public_ip"`
 
 	// HistoricalLookbackDays specifies how many days back to look for historical installations
@@ -84,7 +84,7 @@ func DefaultConfig() *Config {
 		OutputDir:              "",    // Will be set to scans/ by main
 		Debug:                  false,
 		Verbose:                false,
-		DisablePublicIP:        false,
+		DisablePublicIP:        true,  // Default to true - don't fetch public IP from external services
 		HistoricalLookbackDays: 30,
 		IncludeHistorical:      true,
 		IncludeRawLogs:         true,

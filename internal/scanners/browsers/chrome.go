@@ -26,26 +26,31 @@ func (s *ChromeScanner) Scan(cfg *config.Config) ([]scanners.Component, error) {
 	var components []scanners.Component
 	var extensionDirs []string
 
-	// Get Chrome extension directories based on OS
+	// Get Chrome base directory
+	home, _ := os.UserHomeDir()
+	var chromeBase string
+
 	switch runtime.GOOS {
 	case "darwin":
-		home, _ := os.UserHomeDir()
-		extensionDirs = append(extensionDirs,
-			filepath.Join(home, "Library", "Application Support", "Google", "Chrome", "Default", "Extensions"),
-			filepath.Join(home, "Library", "Application Support", "Google", "Chrome", "Profile 1", "Extensions"),
-		)
+		chromeBase = filepath.Join(home, "Library", "Application Support", "Google", "Chrome")
 	case "windows":
-		home, _ := os.UserHomeDir()
-		extensionDirs = append(extensionDirs,
-			filepath.Join(home, "AppData", "Local", "Google", "Chrome", "User Data", "Default", "Extensions"),
-			filepath.Join(home, "AppData", "Local", "Google", "Chrome", "User Data", "Profile 1", "Extensions"),
-		)
+		chromeBase = filepath.Join(home, "AppData", "Local", "Google", "Chrome", "User Data")
 	case "linux":
-		home, _ := os.UserHomeDir()
-		extensionDirs = append(extensionDirs,
-			filepath.Join(home, ".config", "google-chrome", "Default", "Extensions"),
-			filepath.Join(home, ".config", "google-chrome", "Profile 1", "Extensions"),
-		)
+		chromeBase = filepath.Join(home, ".config", "google-chrome")
+	}
+
+	// Discover all Chrome profiles dynamically
+	profiles, err := discoverChromeProfiles(chromeBase)
+	if err != nil && cfg.Debug {
+		fmt.Printf("Could not discover Chrome profiles: %v\n", err)
+	}
+
+	// Add extension directories for each discovered profile
+	profileExtDirs := make(map[string]string) // map[extensionDir]profileName
+	for _, profile := range profiles {
+		extDir := filepath.Join(chromeBase, profile, "Extensions")
+		extensionDirs = append(extensionDirs, extDir)
+		profileExtDirs[extDir] = profile
 	}
 
 	// Scan all user profiles if enabled
@@ -76,7 +81,8 @@ func (s *ChromeScanner) Scan(cfg *config.Config) ([]scanners.Component, error) {
 			continue
 		}
 
-		exts, err := scanChromeExtensions(extDir, cfg)
+		profileName := profileExtDirs[extDir]
+		exts, err := scanChromeExtensions(extDir, profileName, cfg)
 		if err != nil {
 			if cfg.Debug {
 				fmt.Printf("Error scanning Chrome extensions in %s: %v\n", extDir, err)
@@ -89,7 +95,7 @@ func (s *ChromeScanner) Scan(cfg *config.Config) ([]scanners.Component, error) {
 	return components, nil
 }
 
-func scanChromeExtensions(extensionDir string, cfg *config.Config) ([]scanners.Component, error) {
+func scanChromeExtensions(extensionDir string, profileName string, cfg *config.Config) ([]scanners.Component, error) {
 	var components []scanners.Component
 
 	entries, err := os.ReadDir(extensionDir)
@@ -136,16 +142,27 @@ func scanChromeExtensions(extensionDir string, cfg *config.Config) ([]scanners.C
 		}
 
 		if latestVersion != "" {
+			// Resolve internationalized name if needed
+			displayName := latestManifest.Name
+			if len(displayName) > 6 && displayName[:6] == "__MSG_" {
+				// Try to resolve from _locales
+				resolvedName := resolveI18nName(extensionPath, latestVersion, latestManifest.Name)
+				if resolvedName != "" {
+					displayName = resolvedName
+				}
+			}
+
 			comp := scanners.Component{
 				Type:        "browser-extension",
-				Name:        latestManifest.Name,
+				Name:        displayName,
 				Version:     latestManifest.Version,
 				Description: latestManifest.Description,
 				Location:    extensionPath,
 				Properties: map[string]string{
-					"browser":      "chrome",
-					"extension_id": extensionID,
+					"browser":          "chrome",
+					"extension_id":     extensionID,
 					"manifest_version": fmt.Sprintf("%d", latestManifest.ManifestVersion),
+					"profile":          profileName,
 				},
 			}
 
@@ -187,5 +204,63 @@ type chromeManifest struct {
 	ManifestVersion int      `json:"manifest_version"`
 	Permissions     []string `json:"permissions"`
 	HostPermissions []string `json:"host_permissions"`
+}
+
+// discoverChromeProfiles finds all Chrome profile directories
+func discoverChromeProfiles(chromeBase string) ([]string, error) {
+	var profiles []string
+
+	entries, err := os.ReadDir(chromeBase)
+	if err != nil {
+		return profiles, err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		// Include Default and any Profile directories
+		if name == "Default" || (len(name) > 7 && name[:7] == "Profile") {
+			profiles = append(profiles, name)
+		}
+	}
+
+	return profiles, nil
+}
+
+// resolveI18nName resolves internationalized extension names from _locales
+func resolveI18nName(extensionPath, version, msgKey string) string {
+	// Extract the message key from __MSG_key__
+	if len(msgKey) < 8 {
+		return ""
+	}
+	key := msgKey[6 : len(msgKey)-2] // Remove __MSG_ and __
+
+	// Try to read from _locales/en/messages.json (default to English)
+	localesPath := filepath.Join(extensionPath, version, "_locales", "en", "messages.json")
+	data, err := os.ReadFile(localesPath)
+	if err != nil {
+		// Try en_US as fallback
+		localesPath = filepath.Join(extensionPath, version, "_locales", "en_US", "messages.json")
+		data, err = os.ReadFile(localesPath)
+		if err != nil {
+			return ""
+		}
+	}
+
+	var messages map[string]map[string]interface{}
+	if err := json.Unmarshal(data, &messages); err != nil {
+		return ""
+	}
+
+	if msg, exists := messages[key]; exists {
+		if message, ok := msg["message"].(string); ok {
+			return message
+		}
+	}
+
+	return ""
 }
 

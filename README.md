@@ -1,5 +1,7 @@
 # EndpointBOM
 
+> **Just want to get started?** See [TLDR.md](TLDR.md) for quick copy-paste commands.
+
 **EndpointBOM** is a comprehensive CLI tool for scanning developer endpoints (Mac and Windows) to capture Bill of Materials (BOM) data. It generates CycloneDX-format SBOM files containing information about installed packages, applications, IDE extensions, and MCP servers. The primary purpose is for use by Information Security teams to import into other tooling for discovering unapproved software or malicious packages.
 
 ## Features

@@ -1,0 +1,14 @@
+# Build artifacts
+dist/
+*.exe
+dt-upload*
+!dt-upload*.go
+
+# Secrets (never commit these!)
+*.env
+secrets.txt
+encoded-secrets.txt
+
+# Test binaries
+test-*
+

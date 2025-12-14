@@ -29,7 +29,9 @@ var (
 	scanAllUsers       bool
 	excludePaths       []string
 	disabledScanners   []string
+	enabledScanners    []string
 	disablePublicIP    bool
+	fetchPublicIP      bool
 	historicalDays     int
 	noHistorical       bool
 	noRawLogs          bool
@@ -70,7 +72,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&scanAllUsers, "scan-all-users", true, "scan all user profiles (requires admin, default: true)")
 	rootCmd.PersistentFlags().StringSliceVar(&excludePaths, "exclude", []string{}, "paths to exclude from scanning")
 	rootCmd.PersistentFlags().StringSliceVar(&disabledScanners, "disable", []string{}, "scanners to disable (e.g., npm,pip,vscode)")
-	rootCmd.PersistentFlags().BoolVar(&disablePublicIP, "disable-public-ip", false, "disable public IP address gathering from external services")
+	rootCmd.PersistentFlags().StringSliceVar(&enabledScanners, "enable", []string{}, "scanners to enable (e.g., browser-extensions, chrome-extensions, local-projects)")
+	rootCmd.PersistentFlags().BoolVar(&fetchPublicIP, "fetch-public-ip", false, "enable public IP address gathering from external services (disabled by default)")
+	rootCmd.PersistentFlags().BoolVar(&disablePublicIP, "disable-public-ip", false, "disable public IP address gathering from external services (deprecated, use --fetch-public-ip instead)")
 	rootCmd.PersistentFlags().IntVar(&historicalDays, "historical-days", 30, "days to look back for historical package installations")
 	rootCmd.PersistentFlags().BoolVar(&noHistorical, "no-historical", false, "disable historical package tracking")
 	rootCmd.PersistentFlags().BoolVar(&noRawLogs, "no-raw-logs", false, "don't include raw log files in zip archive")
@@ -145,7 +149,19 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("disable") {
 		cfg.DisabledScanners = append(cfg.DisabledScanners, disabledScanners...)
 	}
-	if cmd.Flags().Changed("disable-public-ip") {
+	if cmd.Flags().Changed("enable") {
+		// Expand shorthand groups
+		expandedScanners := expandScannerGroups(enabledScanners)
+		
+		// Remove enabled scanners from the disabled list
+		for _, enableScanner := range expandedScanners {
+			cfg.DisabledScanners = removeFromSlice(cfg.DisabledScanners, enableScanner)
+		}
+	}
+	// Handle public IP flags (--fetch-public-ip takes precedence over --disable-public-ip)
+	if cmd.Flags().Changed("fetch-public-ip") {
+		cfg.DisablePublicIP = !fetchPublicIP
+	} else if cmd.Flags().Changed("disable-public-ip") {
 		cfg.DisablePublicIP = disablePublicIP
 	}
 	if cmd.Flags().Changed("historical-days") {
@@ -209,7 +225,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Initialize scanners
 	allScanners := []scanners.Scanner{
-		// Package managers
+		// Package managers (global)
 		&packagemanagers.NPMScanner{},
 		&packagemanagers.PipScanner{},
 		&packagemanagers.YarnScanner{},
@@ -220,6 +236,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 		&packagemanagers.ComposerScanner{},
 		&packagemanagers.ChocolateyScanner{},
 		&packagemanagers.GoScanner{},
+
+		// Package managers (local projects)
+		&packagemanagers.NPMLocalScanner{},
+		&packagemanagers.PipLocalScanner{},
+		&packagemanagers.GemLocalScanner{},
 
 		// Applications
 		&applications.ApplicationScanner{},
@@ -285,8 +306,14 @@ func runScan(cmd *cobra.Command, args []string) error {
 				if comp.Properties == nil {
 					comp.Properties = make(map[string]string)
 				}
-				comp.Properties["install_type"] = "current"
-				comp.Properties["source"] = scanner.Name()
+				// Only set install_type if not already set (preserve local scanner properties)
+				if _, exists := comp.Properties["install_type"]; !exists {
+					comp.Properties["install_type"] = "current"
+				}
+				// Only set source if not already set
+				if _, exists := comp.Properties["source"]; !exists {
+					comp.Properties["source"] = scanner.Name()
+				}
 
 				switch comp.Type {
 				case "application":
@@ -380,6 +407,43 @@ func buildPackageSet(components []scanners.Component) map[string]bool {
 		set[key] = true
 	}
 	return set
+}
+
+// expandScannerGroups expands shorthand scanner groups into individual scanners
+func expandScannerGroups(scanners []string) []string {
+	var expanded []string
+	
+	for _, scanner := range scanners {
+		switch scanner {
+		case "browser-extensions":
+			// Expand to all browser extension scanners
+			expanded = append(expanded, "chrome-extensions")
+			expanded = append(expanded, "firefox-extensions")
+			expanded = append(expanded, "edge-extensions")
+			expanded = append(expanded, "safari-extensions")
+		case "local-projects":
+			// Expand to all local project scanners
+			expanded = append(expanded, "npm-local")
+			expanded = append(expanded, "pip-local")
+			expanded = append(expanded, "gem-local")
+		default:
+			// Not a group, add as-is
+			expanded = append(expanded, scanner)
+		}
+	}
+	
+	return expanded
+}
+
+// removeFromSlice removes all occurrences of a value from a string slice
+func removeFromSlice(slice []string, value string) []string {
+	result := []string{}
+	for _, item := range slice {
+		if item != value {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 func main() {
