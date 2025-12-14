@@ -421,6 +421,26 @@ func FormatVersionFromTimestamp(timestamp string) string {
 	return t.Format("2006-01-02-1504")
 }
 
+// BuildProjectDescription builds a project description with metadata
+func BuildProjectDescription(baseDescription string, metadata *BOMMetadata) string {
+	parts := []string{baseDescription}
+
+	if metadata.LoggedInUser != "" {
+		parts = append(parts, fmt.Sprintf("User: %s", metadata.LoggedInUser))
+	}
+
+	if len(metadata.LocalIPs) > 0 {
+		ipsStr := strings.Join(metadata.LocalIPs, ", ")
+		parts = append(parts, fmt.Sprintf("Local IPs: %s", ipsStr))
+	}
+
+	if metadata.PublicIP != "" {
+		parts = append(parts, fmt.Sprintf("Public IP: %s", metadata.PublicIP))
+	}
+
+	return strings.Join(parts, " | ")
+}
+
 // getMostRecentScanFiles finds the most recent scan files by timestamp
 func getMostRecentScanFiles(scansDir string) ([]string, error) {
 	allFiles, err := filepath.Glob(filepath.Join(scansDir, "*.cdx.json"))
@@ -703,6 +723,7 @@ func main() {
 
 			childName := fmt.Sprintf("%s - %s", hostname, sbomType)
 			childVersion := FormatVersionFromTimestamp(bomMetadata.Timestamp)
+			childDescription := BuildProjectDescription(typeConfig.Description, bomMetadata)
 
 			fmt.Printf("\n   Creating version: %s for %s\n", childVersion, sbomType)
 
@@ -717,7 +738,7 @@ func main() {
 					childName,
 					childVersion,
 					typeConfig.Classifier,
-					typeConfig.Description,
+					childDescription,
 					&parentProject.UUID,
 				)
 				if err != nil {
@@ -726,6 +747,10 @@ func main() {
 				}
 			} else {
 				fmt.Printf("\n📦 Child project already exists: %s\n", childProject.UUID)
+				// Update description with latest metadata
+				if err := client.UpdateProjectDescription(childProject.UUID, childDescription); err != nil {
+					fmt.Printf("   ⚠️  Warning: Failed to update description: %v\n", err)
+				}
 			}
 
 			// Upload BOM
