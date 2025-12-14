@@ -74,9 +74,12 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&disabledScanners, "disable", []string{}, "scanners to disable (e.g., npm,pip,vscode)")
 	rootCmd.PersistentFlags().StringSliceVar(&enabledScanners, "enable", []string{}, "scanners to enable (e.g., browser-extensions, chrome-extensions, local-projects)")
 	rootCmd.PersistentFlags().BoolVar(&fetchPublicIP, "fetch-public-ip", false, "enable public IP address gathering from external services (disabled by default)")
-	rootCmd.PersistentFlags().BoolVar(&disablePublicIP, "disable-public-ip", false, "disable public IP address gathering from external services (deprecated, use --fetch-public-ip instead)")
 	rootCmd.PersistentFlags().IntVar(&historicalDays, "historical-days", 30, "days to look back for historical package installations")
 	rootCmd.PersistentFlags().BoolVar(&noHistorical, "no-historical", false, "disable historical package tracking")
+	
+	// Deprecated flag - hidden from help but still functional for backward compatibility
+	rootCmd.PersistentFlags().BoolVar(&disablePublicIP, "disable-public-ip", false, "deprecated: use --fetch-public-ip instead")
+	rootCmd.PersistentFlags().MarkHidden("disable-public-ip")
 	rootCmd.PersistentFlags().BoolVar(&noRawLogs, "no-raw-logs", false, "don't include raw log files in zip archive")
 	rootCmd.PersistentFlags().BoolVar(&noZip, "no-zip", false, "don't create zip archive")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "show version information")
