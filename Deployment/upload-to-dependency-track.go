@@ -393,22 +393,41 @@ func getMostRecentScanFiles(scansDir string) ([]string, error) {
 		return nil, nil
 	}
 
-	// Extract timestamps from filenames (format: hostname.YYYYMMDD-HHmmss.type.cdx.json)
+	// Extract timestamps from filenames (format: hostname.YYYYMMDD-HHmmss-TZ.type.cdx.json)
+	// Note: hostname may contain dots (e.g., "host.local"), so we need to find the timestamp part
 	fileTimestamps := make(map[string]time.Time)
 	for _, file := range allFiles {
 		baseName := filepath.Base(file)
-		parts := strings.Split(strings.TrimSuffix(baseName, ".cdx.json"), ".")
+		trimmed := strings.TrimSuffix(baseName, ".cdx.json")
+		parts := strings.Split(trimmed, ".")
 		
-		if len(parts) >= 2 {
-			timestampStr := parts[1]
-			// Parse timestamp (format: 20251214-112345)
-			timestamp, err := time.Parse("20060102-150405", timestampStr)
-			if err != nil {
-				fmt.Printf("⚠️  Skipping file with invalid timestamp format: %s\n", baseName)
-				continue
+		// Find the timestamp part (format: YYYYMMDD-HHMMSS-TZ or YYYYMMDD-HHMMSS for backward compatibility)
+		var timestampStr string
+		for _, part := range parts {
+			// Check if this part looks like a timestamp with timezone (20251214-112345-CST)
+			if len(part) >= 15 && part[8] == '-' && (len(part) == 15 || (len(part) > 15 && part[15] == '-')) {
+				// Extract just the date-time part (without timezone for parsing)
+				if len(part) > 15 && part[15] == '-' {
+					timestampStr = part[:15] // Strip timezone
+				} else {
+					timestampStr = part
+				}
+				break
 			}
-			fileTimestamps[file] = timestamp
 		}
+		
+		if timestampStr == "" {
+			fmt.Printf("⚠️  Skipping file with invalid timestamp format: %s\n", baseName)
+			continue
+		}
+		
+		// Parse timestamp (format: 20251214-112345)
+		timestamp, err := time.Parse("20060102-150405", timestampStr)
+		if err != nil {
+			fmt.Printf("⚠️  Skipping file with invalid timestamp format: %s (extracted: %s)\n", baseName, timestampStr)
+			continue
+		}
+		fileTimestamps[file] = timestamp
 	}
 
 	if len(fileTimestamps) == 0 {
@@ -538,10 +557,15 @@ func main() {
 
 	// Extract timestamp from first file for logging
 	firstFileBase := filepath.Base(files[0])
-	parts := strings.Split(strings.TrimSuffix(firstFileBase, ".cdx.json"), ".")
+	trimmed := strings.TrimSuffix(firstFileBase, ".cdx.json")
+	parts := strings.Split(trimmed, ".")
 	scanTimestamp := "unknown"
-	if len(parts) >= 2 {
-		scanTimestamp = parts[1]
+	// Find the timestamp part (format: YYYYMMDD-HHMMSS-TZ or YYYYMMDD-HHMMSS)
+	for _, part := range parts {
+		if len(part) >= 15 && part[8] == '-' {
+			scanTimestamp = part
+			break
+		}
 	}
 
 	fmt.Printf("\n📁 Found most recent scan: %s\n", scanTimestamp)

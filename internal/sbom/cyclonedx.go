@@ -15,12 +15,15 @@ import (
 
 // GenerateSBOMs creates CycloneDX SBOM files for different component categories
 func GenerateSBOMs(result *scanners.ScanResult, sysInfo *system.Info, outputDir string) error {
-	timestamp := time.Now().Format("20060102-150405")
+	now := time.Now()
+	timestamp := now.Format("20060102-150405")
+	timezone := now.Format("MST") // Get timezone abbreviation (e.g., CST, EST, PST)
+	timestampWithTZ := fmt.Sprintf("%s-%s", timestamp, timezone)
 	hostname := sysInfo.Hostname
 
 	// Generate SBOM for package managers
 	if len(result.PackageManagers) > 0 {
-		filename := fmt.Sprintf("%s.%s.package-managers.cdx.json", hostname, timestamp)
+		filename := fmt.Sprintf("%s.%s.package-managers.cdx.json", hostname, timestampWithTZ)
 		if err := generateSBOM(result.PackageManagers, sysInfo, filepath.Join(outputDir, filename), "package-managers"); err != nil {
 			return fmt.Errorf("failed to generate package managers SBOM: %w", err)
 		}
@@ -29,7 +32,7 @@ func GenerateSBOMs(result *scanners.ScanResult, sysInfo *system.Info, outputDir 
 
 	// Generate SBOM for applications
 	if len(result.Applications) > 0 {
-		filename := fmt.Sprintf("%s.%s.applications.cdx.json", hostname, timestamp)
+		filename := fmt.Sprintf("%s.%s.applications.cdx.json", hostname, timestampWithTZ)
 		if err := generateSBOM(result.Applications, sysInfo, filepath.Join(outputDir, filename), "applications"); err != nil {
 			return fmt.Errorf("failed to generate applications SBOM: %w", err)
 		}
@@ -38,7 +41,7 @@ func GenerateSBOMs(result *scanners.ScanResult, sysInfo *system.Info, outputDir 
 
 	// Generate SBOM for IDE extensions
 	if len(result.IDEExtensions) > 0 {
-		filename := fmt.Sprintf("%s.%s.ide-extensions.cdx.json", hostname, timestamp)
+		filename := fmt.Sprintf("%s.%s.ide-extensions.cdx.json", hostname, timestampWithTZ)
 		if err := generateSBOM(result.IDEExtensions, sysInfo, filepath.Join(outputDir, filename), "ide-extensions"); err != nil {
 			return fmt.Errorf("failed to generate IDE extensions SBOM: %w", err)
 		}
@@ -47,7 +50,7 @@ func GenerateSBOMs(result *scanners.ScanResult, sysInfo *system.Info, outputDir 
 
 	// Generate SBOM for browser extensions
 	if len(result.BrowserExtensions) > 0 {
-		filename := fmt.Sprintf("%s.%s.browser-extensions.cdx.json", hostname, timestamp)
+		filename := fmt.Sprintf("%s.%s.browser-extensions.cdx.json", hostname, timestampWithTZ)
 		if err := generateSBOM(result.BrowserExtensions, sysInfo, filepath.Join(outputDir, filename), "browser-extensions"); err != nil {
 			return fmt.Errorf("failed to generate browser extensions SBOM: %w", err)
 		}

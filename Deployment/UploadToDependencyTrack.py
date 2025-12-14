@@ -336,27 +336,42 @@ def build_project_description(base_description: str, metadata: Dict) -> str:
 def get_most_recent_scan_files(scans_dir: Path) -> List[Path]:
     """
     Find the most recent scan files by timestamp in the filename.
-    Expected format: hostname.timestamp.type.cdx.json
+    Expected format: hostname.timestamp-TZ.type.cdx.json
+    Note: hostname may contain dots (e.g., "host.local")
     Returns only files from the most recent scan.
     """
     all_files = list(scans_dir.glob("*.cdx.json"))
     if not all_files:
         return []
     
-    # Extract timestamps from filenames (format: hostname.YYYYMMDDHHmmss.type.cdx.json)
+    # Extract timestamps from filenames (format: hostname.YYYYMMDD-HHMMSS-TZ.type.cdx.json)
     file_timestamps = {}
     for file in all_files:
         parts = file.stem.split('.')
-        if len(parts) >= 3:
-            # Second part should be timestamp (e.g., "20251214-112345")
-            timestamp_str = parts[1]
-            try:
-                # Parse timestamp to validate format
-                timestamp = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S")
-                file_timestamps[file] = timestamp
-            except ValueError:
-                print(f"⚠️  Skipping file with invalid timestamp format: {file.name}")
-                continue
+        
+        # Find the timestamp part (format: YYYYMMDD-HHMMSS-TZ or YYYYMMDD-HHMMSS for backward compatibility)
+        timestamp_str = None
+        for part in parts:
+            # Check if this part looks like a timestamp (with or without timezone)
+            if len(part) >= 15 and part[8] == '-' and part[:8].isdigit() and part[9:15].isdigit():
+                # Extract just the date-time part (without timezone for parsing)
+                if len(part) > 15 and part[15] == '-':
+                    timestamp_str = part[:15]  # Strip timezone
+                else:
+                    timestamp_str = part
+                break
+        
+        if not timestamp_str:
+            print(f"⚠️  Skipping file with invalid timestamp format: {file.name}")
+            continue
+        
+        try:
+            # Parse timestamp to validate format
+            timestamp = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S")
+            file_timestamps[file] = timestamp
+        except ValueError:
+            print(f"⚠️  Skipping file with invalid timestamp format: {file.name}")
+            continue
     
     if not file_timestamps:
         return []
