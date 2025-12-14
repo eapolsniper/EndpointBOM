@@ -32,6 +32,7 @@ var (
 	enabledScanners    []string
 	disablePublicIP    bool
 	fetchPublicIP      bool
+	enableAll          bool // Enable all optional features (browser extensions, public IP)
 	historicalDays     int
 	noHistorical       bool
 	noRawLogs          bool
@@ -74,6 +75,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&disabledScanners, "disable", []string{}, "scanners to disable (e.g., npm,pip,vscode)")
 	rootCmd.PersistentFlags().StringSliceVar(&enabledScanners, "enable", []string{}, "scanners to enable (e.g., browser-extensions, chrome-extensions, local-projects)")
 	rootCmd.PersistentFlags().BoolVar(&fetchPublicIP, "fetch-public-ip", false, "enable public IP address gathering from external services (disabled by default)")
+	rootCmd.PersistentFlags().BoolVar(&enableAll, "all", false, "enable all optional features (browser extensions, public IP lookup)")
 	rootCmd.PersistentFlags().IntVar(&historicalDays, "historical-days", 30, "days to look back for historical package installations")
 	rootCmd.PersistentFlags().BoolVar(&noHistorical, "no-historical", false, "disable historical package tracking")
 	
@@ -152,6 +154,17 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("disable") {
 		cfg.DisabledScanners = append(cfg.DisabledScanners, disabledScanners...)
 	}
+	// Handle --all flag (enables all optional features)
+	if cmd.Flags().Changed("all") && enableAll {
+		// Enable browser extensions
+		browserExtensions := []string{"chrome-extensions", "firefox-extensions", "edge-extensions", "safari-extensions"}
+		for _, scanner := range browserExtensions {
+			cfg.DisabledScanners = removeFromSlice(cfg.DisabledScanners, scanner)
+		}
+		// Enable public IP lookup
+		cfg.DisablePublicIP = false
+	}
+
 	if cmd.Flags().Changed("enable") {
 		// Expand shorthand groups
 		expandedScanners := expandScannerGroups(enabledScanners)
