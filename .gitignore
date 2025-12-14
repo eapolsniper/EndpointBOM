@@ -70,3 +70,6 @@ coverage.html
 .env
 .env.local
 
+# Demo directory (contains built binaries with embedded credentials)
+demo/
+
