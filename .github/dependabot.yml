@@ -37,6 +37,40 @@ updates:
     reviewers:
       - "eapolsniper"
 
+  # Python dependencies - Deployment scripts
+  - package-ecosystem: "pip"
+    directory: "/Deployment"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+    
+    # Limit concurrent PRs
+    open-pull-requests-limit: 5
+    
+    # Group security updates
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    
+    labels:
+      - "dependencies"
+      - "python"
+    
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    
+    # Ignore major version bumps
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    
+    reviewers:
+      - "eapolsniper"
+
   # GitHub Actions - keep workflows up to date
   - package-ecosystem: "github-actions"
     directory: "/"
