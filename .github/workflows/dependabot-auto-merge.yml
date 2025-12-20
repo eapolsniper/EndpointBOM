@@ -30,6 +30,7 @@ jobs:
       
       - name: Check PR age and severity
         id: check
+        if: github.event_name == 'pull_request'
         run: |
           PR_URL="${{ github.event.pull_request.html_url }}"
           CREATED_AT="${{ github.event.pull_request.created_at }}"
@@ -72,7 +73,9 @@ jobs:
           echo "days_remaining=$((14 - DAYS_OLD))" >> $GITHUB_OUTPUT
       
       - name: Auto-merge if criteria met
-        if: steps.check.outputs.should_merge == 'true'
+        if: |
+          github.event_name == 'pull_request' &&
+          steps.check.outputs.should_merge == 'true'
         run: |
           gh pr comment "$PR_URL" --body "${{ steps.check.outputs.reason }}
           
@@ -91,6 +94,7 @@ jobs:
       
       - name: Add cooldown label and comment
         if: |
+          github.event_name == 'pull_request' &&
           steps.check.outputs.should_merge == 'false' && 
           !contains(github.event.pull_request.labels.*.name, 'cooldown-active')
         run: |
@@ -113,17 +117,28 @@ jobs:
       
       - name: Check all open Dependabot PRs (scheduled run)
         if: github.event_name == 'schedule'
+        continue-on-error: true
         run: |
           echo "Checking all open Dependabot PRs for cooldown expiration..."
           
           # Get all open PRs from Dependabot
-          gh pr list --author "dependabot[bot]" --json number,url,createdAt,labels --limit 50 | \
-            jq -r '.[] | select(.labels[].name == "cooldown-active") | .url' | \
+          PRS=$(gh pr list --author "dependabot[bot]" --json number,url,createdAt,labels --limit 50)
+          
+          if [ -z "$PRS" ] || [ "$PRS" == "[]" ]; then
+            echo "✅ No open Dependabot PRs found. Nothing to process."
+            exit 0
+          fi
+          
+          echo "$PRS" | jq -r '.[] | select(.labels[].name == "cooldown-active") | .url' | \
             while read PR_URL; do
-              echo "Re-triggering workflow for: $PR_URL"
-              # Trigger workflow by adding a comment
-              gh pr comment "$PR_URL" --body "🔄 Daily cooldown check..."
+              if [ -n "$PR_URL" ]; then
+                echo "Re-triggering workflow for: $PR_URL"
+                # Trigger workflow by adding a comment
+                gh pr comment "$PR_URL" --body "🔄 Daily cooldown check..." || true
+              fi
             done
+          
+          echo "✅ Scheduled check complete."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
