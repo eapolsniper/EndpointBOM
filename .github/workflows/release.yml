@@ -1,4 +1,4 @@
-name: Manual Release
+name: Release
 
 on:
   workflow_dispatch:
@@ -12,6 +12,9 @@ on:
           - major
           - minor
           - patch
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -42,17 +45,86 @@ jobs:
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Latest tag: $LATEST_TAG"
       
+      - name: Check for Dependabot vulnerability remediations
+        id: security_check
+        if: github.event_name == 'push'
+        run: |
+          LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
+          
+          echo "🔍 Checking for Dependabot vulnerability remediations..."
+          
+          # Get recent merged Dependabot PRs with their bodies
+          echo "📋 Checking recent merged Dependabot PRs..."
+          PR_DATA=$(gh pr list --state merged --base main --author "dependabot[bot]" --limit 10 --json number,body 2>/dev/null || echo "[]")
+          
+          # Check if any PR body indicates it fixes a vulnerability
+          # Dependabot includes text like "> **Note:** This PR addresses a security vulnerability"
+          # or links to security advisories
+          VULN_PR_COUNT=$(echo "$PR_DATA" | jq -r '[.[] | select(
+            (.body // "" | ascii_downcase | test("addresses.*security|security.*vulnerability|github\.com.*security-advisories|security.*advisory|fixes.*vulnerability|vulnerability.*fixed"))
+          )] | length' 2>/dev/null || echo "0")
+          
+          if [ "$VULN_PR_COUNT" != "0" ] && [ "$VULN_PR_COUNT" != "" ] && [ "$VULN_PR_COUNT" != "null" ]; then
+            echo "   ✅ Found $VULN_PR_COUNT Dependabot PR(s) that remediate vulnerabilities"
+            echo "$PR_DATA" | jq -r '.[] | select(
+              (.body // "" | ascii_downcase | test("addresses.*security|security.*vulnerability|github\.com.*security-advisories|security.*advisory|fixes.*vulnerability|vulnerability.*fixed"))
+            ) | "      PR #\(.number): Remediates vulnerability"'
+            echo "true" > /tmp/vuln_fixed.txt
+          else
+            echo "   ℹ️ No Dependabot PRs found that remediate vulnerabilities"
+            echo "false" > /tmp/vuln_fixed.txt
+          fi
+          
+          # Read result
+          VULN_RESULT=$(cat /tmp/vuln_fixed.txt 2>/dev/null || echo "false")
+          
+          if [ "$VULN_RESULT" = "true" ]; then
+            echo "🔒 Dependabot vulnerability remediation detected - will trigger release"
+          else
+            echo "ℹ️ No Dependabot vulnerability remediations detected. Skipping automatic release."
+            if [ "$LATEST_TAG" != "v0.0.0" ] && [ -n "$LATEST_TAG" ]; then
+              COMMIT_RANGE="${LATEST_TAG}..HEAD"
+            else
+              COMMIT_RANGE="HEAD"
+            fi
+            echo "Recent commits:"
+            git log --oneline ${COMMIT_RANGE} --max-count=5 2>/dev/null || git log --oneline HEAD --max-count=5
+          fi
+          
+          echo "has_security_fixes=$VULN_RESULT" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Calculate version bump
         id: check
         run: |
           LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
           CURRENT_VERSION="${LATEST_TAG#v}"  # Remove 'v' prefix
           
-          # Get bump type from manual input
-          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          # Determine if this is a manual or automatic release
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual release - use provided bump type
+            BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+            SHOULD_RELEASE=true
+          else
+            # Automatic release - check for security fixes
+            HAS_SECURITY="${{ steps.security_check.outputs.has_security_fixes }}"
+            if [ "$HAS_SECURITY" = "true" ]; then
+              # Automatic release for security fixes - always patch bump
+              BUMP_TYPE="patch"
+              SHOULD_RELEASE=true
+              echo "🚀 Auto-releasing patch version for security fixes"
+            else
+              # No security fixes, skip release
+              BUMP_TYPE="patch"
+              SHOULD_RELEASE=false
+              echo "⏭️ Skipping release - no security fixes detected"
+            fi
+          fi
           
           echo "Current version: $CURRENT_VERSION"
-          echo "Requested bump type: $BUMP_TYPE"
+          echo "Bump type: $BUMP_TYPE"
+          echo "Should release: $SHOULD_RELEASE"
           
           # Parse current version
           IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
@@ -78,16 +150,19 @@ jobs:
           
           NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           
-          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "should_release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           
-          echo "Will release: v$NEXT_VERSION"
+          if [ "$SHOULD_RELEASE" = "true" ]; then
+            echo "Will release: v$NEXT_VERSION"
+          fi
 
   release:
     name: Build and Release
     needs: detect-version-bump
+    if: needs.detect-version-bump.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     
     steps:
@@ -214,6 +289,7 @@ jobs:
   update-changelog:
     name: Update CHANGELOG.md
     needs: [detect-version-bump, release]
+    if: needs.detect-version-bump.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     
     steps:
